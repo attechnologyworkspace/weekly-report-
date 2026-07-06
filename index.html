@@ -34,6 +34,11 @@
   .btn-primary:hover{filter:brightness(1.06)}
   .btn-ghost{background:#232c3d;color:#e7ecf5}
   .btn-ghost:hover{background:#2c374c}
+  .wknav{display:flex;align-items:center;gap:6px}
+  .wkbtn{padding:9px 12px}
+  .wkpick{font-family:'Prompt',sans-serif;font-weight:600;font-size:13px;border:none;border-radius:10px;
+    padding:8px 10px;background:#232c3d;color:#e7ecf5;cursor:pointer}
+  .wkpick::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.7;cursor:pointer}
 
   .stage{padding:30px 20px 60px;display:flex;justify-content:center}
 
@@ -122,6 +127,12 @@
 <div class="toolbar">
   <div class="brand"><span class="dot"></span>ฟอร์มรายงานรายสัปดาห์</div>
   <span class="hint">คลิกที่ข้อความเพื่อพิมพ์ทับ · แก้ % แถบขยับเอง · Enter = เพิ่มบรรทัด · ชี้บรรทัดแล้วกด ✕ เพื่อลบ</span>
+  <span class="wknav">
+    <button class="btn btn-ghost wkbtn" onclick="shiftWeek(-1)" title="สัปดาห์ก่อนหน้า">◀</button>
+    <button class="btn btn-ghost wkbtn" onclick="shiftWeek(1)" title="สัปดาห์ถัดไป">▶</button>
+    <input type="date" id="wkpick" class="wkpick" onchange="pickWeek(this.value)" title="เลือกวันที่ในสัปดาห์ที่ต้องการ">
+    <button class="btn btn-ghost" onclick="thisWeek()">สัปดาห์นี้</button>
+  </span>
   <button class="btn btn-ghost" onclick="addProject()">＋ เพิ่มโครงการ</button>
   <button class="btn btn-ghost" onclick="resetBlank()">↺ ล้างเป็นฟอร์มเปล่า</button>
   <button class="btn btn-primary" onclick="downloadPNG()">⬇ ดาวน์โหลด PNG</button>
@@ -348,20 +359,30 @@ async function downloadPNG(){
   }
 }
 
-// เติมช่วงวันที่ของสัปดาห์ปัจจุบัน (จันทร์–ศุกร์, พ.ศ.) อัตโนมัติ — แก้ทับได้
-function thWeekRange(){
-  const d=new Date();
-  const day=d.getDay();
+// ---- ตัวจัดการสัปดาห์ (เลือกย้อนหลัง/ล่วงหน้าได้) ----
+let weekBase = new Date();
+const THMON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function weekRange(base){
+  const d=new Date(base), day=d.getDay();
   const mon=new Date(d); mon.setDate(d.getDate()+(day===0?-6:1-day));
   const fri=new Date(mon); fri.setDate(mon.getDate()+4);
-  const M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  return `${mon.getDate()} ${M[mon.getMonth()]} – ${fri.getDate()} ${M[fri.getMonth()]} ${fri.getFullYear()+543}`;
+  return {mon,fri};
+}
+function fmtRange(){
+  const {mon,fri}=weekRange(weekBase);
+  return `${mon.getDate()} ${THMON[mon.getMonth()]} – ${fri.getDate()} ${THMON[fri.getMonth()]} ${fri.getFullYear()+543}`;
 }
 function setWeek(){
-  const r=thWeekRange();
+  const r=fmtRange();
   const dr=document.getElementById('drange'); if(dr) dr.textContent=r;
   const fr=document.getElementById('frange'); if(fr) fr.textContent='ประจำสัปดาห์ '+r;
+  const p=document.getElementById('wkpick');
+  if(p){const m=weekRange(weekBase).mon;
+    p.value=`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,'0')}-${String(m.getDate()).padStart(2,'0')}`;}
 }
+function shiftWeek(n){ weekBase.setDate(weekBase.getDate()+n*7); setWeek(); }
+function pickWeek(v){ if(v){ weekBase=new Date(v+'T00:00:00'); setWeek(); } }
+function thisWeek(){ weekBase=new Date(); setWeek(); }
 
 render();
 setWeek();
