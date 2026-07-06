@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ฟอร์มรายงานความคืบหน้ารายสัปดาห์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --ink:#1a2233; --muted:#5a6478; --paper:#fbf7f0; --card:#fff; --line:#eae3d8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  /* ---------- toolbar (never exported) ---------- */
+  .toolbar{
+    position:sticky;top:0;z-index:50;background:#111826;color:#fff;
+    padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    box-shadow:0 4px 18px rgba(0,0,0,.18);
+  }
+  .toolbar .brand{font-family:'Prompt',sans-serif;font-weight:700;font-size:16px;margin-right:auto;display:flex;align-items:center;gap:9px}
+  .toolbar .brand .dot{width:11px;height:11px;border-radius:4px;background:#31c26b}
+  .toolbar .hint{font-size:13px;color:#9aa4b6;font-weight:500}
+  .btn{
+    font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+    border:none;border-radius:11px;padding:11px 18px;display:inline-flex;align-items:center;gap:8px;
+    transition:transform .06s ease, filter .15s ease;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:#31c26b;color:#04120a}
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-ghost{background:#232c3d;color:#e7ecf5}
+  .btn-ghost:hover{background:#2c374c}
+
+  .stage{padding:30px 20px 60px;display:flex;justify-content:center}
+
+  /* ---------- poster ---------- */
+  .poster{
+    width:1240px;padding:52px 56px 60px;background:
+      radial-gradient(1200px 480px at 8% -6%, #fff4e8 0%, rgba(255,244,232,0) 60%),
+      radial-gradient(1000px 460px at 100% 0%, #eef4ff 0%, rgba(238,244,255,0) 55%),
+      var(--paper);
+    border-radius:8px;box-shadow:0 20px 60px rgba(26,34,51,.14);
+  }
+
+  /* editable affordance */
+  [contenteditable]{outline:none;border-radius:5px;transition:box-shadow .12s,background .12s}
+  [contenteditable]:hover{box-shadow:0 0 0 2px rgba(47,139,255,.28)}
+  [contenteditable]:focus{box-shadow:0 0 0 2px #2f8bff;background:rgba(47,139,255,.06)}
+  .top [contenteditable]:hover{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+  .top [contenteditable]:focus{box-shadow:0 0 0 2px #fff;background:rgba(255,255,255,.16)}
+
+  /* ---------- header ---------- */
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:38px}
+  .eyebrow{font-family:'Prompt',sans-serif;font-weight:600;font-size:15px;letter-spacing:.14em;color:#ff5a5f;
+    display:inline-flex;align-items:center;gap:10px;margin-bottom:12px}
+  .eyebrow::before{content:"";width:26px;height:3px;border-radius:3px;background:#ff5a5f}
+  h1{font-family:'Prompt',sans-serif;font-weight:800;font-size:44px;line-height:1.12;letter-spacing:-.01em}
+  h1 .accent{color:#8a5cf6}
+  .daterange{text-align:right;flex-shrink:0}
+  .daterange .lbl{font-size:14px;color:var(--muted);font-weight:500;margin-bottom:4px}
+  .daterange .val{font-family:'Prompt',sans-serif;font-weight:700;font-size:24px;color:var(--ink);
+    background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 20px;box-shadow:0 6px 18px rgba(26,34,51,.05)}
+
+  /* ---------- summary strip ---------- */
+  .strip{display:grid;gap:14px;margin-bottom:34px}
+  .pill{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden;box-shadow:0 6px 16px rgba(26,34,51,.04)}
+  .pill::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--dot)}
+  .pill .code{font-family:'Prompt',sans-serif;font-weight:700;font-size:13px;color:var(--muted);margin-bottom:2px}
+  .pill .pct{font-family:'Prompt',sans-serif;font-weight:800;font-size:30px;line-height:1;color:var(--dot)}
+  .pill .nm{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.3;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- cards ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .card{background:var(--card);border-radius:20px;border:1.5px solid var(--line);overflow:hidden;
+    box-shadow:0 10px 30px rgba(26,34,51,.06);display:flex;flex-direction:column;position:relative}
+  .card .top{padding:20px 22px 18px;color:#fff;background:linear-gradient(135deg,var(--a) 0%,var(--a2) 100%)}
+  .card .top .row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .card .top .title{font-family:'Prompt',sans-serif;font-weight:700;font-size:20px;line-height:1.2;flex:1}
+  .card .top .code{font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;background:rgba(255,255,255,.22);padding:5px 10px;border-radius:8px;white-space:nowrap}
+  .badge{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-family:'Prompt',sans-serif;font-weight:600;font-size:13px}
+  .badge .pctwrap{font-weight:800;font-size:15px}
+  .bar{height:9px;border-radius:9px;background:rgba(255,255,255,.28);margin-top:13px;overflow:hidden}
+  .bar>i{display:block;height:100%;border-radius:9px;background:#fff;transition:width .2s ease}
+
+  .body{padding:18px 22px 20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1}
+  .col h4{font-family:'Prompt',sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em;display:flex;align-items:center;gap:7px;margin-bottom:10px}
+  .col h4 .ic{width:9px;height:9px;border-radius:3px;background:var(--a)}
+  .col.next h4 .ic{background:var(--muted);opacity:.5}
+  ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+  li{font-size:13.5px;line-height:1.42;color:#37414f;padding-left:16px;position:relative}
+  li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--a)}
+  .col.next li{color:var(--muted)}
+  .col.next li::before{background:#c4cbd6}
+  .addline{margin-top:8px;font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;color:var(--muted);
+    cursor:pointer;background:none;border:1px dashed #cfd6e2;border-radius:8px;padding:4px 10px}
+  .addline:hover{color:var(--ink);border-color:#9aa4b6}
+
+  .removecard{position:absolute;top:12px;right:12px;z-index:5;width:26px;height:26px;border-radius:8px;
+    border:none;background:rgba(0,0,0,.28);color:#fff;font-size:15px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+  .removecard:hover{background:rgba(0,0,0,.5)}
+
+  .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1.5px solid var(--line);padding-top:18px}
+  .foot b{font-family:'Prompt',sans-serif;color:var(--ink);font-weight:700}
+
+  /* ---------- export mode: hide all editing chrome ---------- */
+  .exporting .addline,.exporting .removecard{display:none !important}
+  .exporting [contenteditable]{box-shadow:none !important;background:none !important}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="brand"><span class="dot"></span>ฟอร์มรายงานรายสัปดาห์</div>
+  <span class="hint">คลิกที่ข้อความใดก็ได้เพื่อพิมพ์ทับ · แก้ตัวเลข % แล้วแถบขยับเอง · Enter = เพิ่มบรรทัด</span>
+  <button class="btn btn-ghost" onclick="addProject()">＋ เพิ่มโครงการ</button>
+  <button class="btn btn-ghost" onclick="resetBlank()">↺ ล้างเป็นฟอร์มเปล่า</button>
+  <button class="btn btn-primary" onclick="downloadPNG()">⬇ ดาวน์โหลด PNG</button>
+</div>
+
+<div class="stage">
+  <div class="poster" id="poster">
+
+    <div class="head">
+      <div>
+        <span class="eyebrow" contenteditable="true">รายงานประจำสัปดาห์</span>
+        <h1><span contenteditable="true">อัปเดตความคืบหน้า</span><br><span class="accent" contenteditable="true">งานประจำสัปดาห์</span></h1>
+      </div>
+      <div class="daterange">
+        <div class="lbl">ช่วงเวลา</div>
+        <div class="val" contenteditable="true">ระบุช่วงวันที่</div>
+      </div>
+    </div>
+
+    <div class="strip" id="strip"></div>
+    <div class="grid" id="grid"></div>
+
+    <div class="foot">
+      <div contenteditable="true">สรุปความคืบหน้าโครงการ</div>
+      <div contenteditable="true">ระบุช่วงวันที่ / ผู้จัดทำ</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PALETTE = [
+  ["#ff5a5f","#ff8060"],["#8a5cf6","#b47dff"],["#12b3a6","#3fd6c8"],
+  ["#2f8bff","#5fa8ff"],["#ff8a3d","#ffb066"],["#31c26b","#5ad98a"],
+  ["#f4419b","#ff77bd"],["#f5b301","#ffcf4d"]
+];
+
+// ตัวอย่างเริ่มต้น — คลิกทับเพื่อแก้เป็นโครงการของคุณเอง
+const SEED = [
+  {title:"ชื่อโครงการที่ 1",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:75,
+   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้","เพิ่มได้อีกโดยกด Enter หรือปุ่ม + เพิ่มรายการ"],
+   next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป","เพิ่มรายการได้ตามต้องการ"]},
+  {title:"ชื่อโครงการที่ 2",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:50,
+   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้"],
+   next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป"]},
+  {title:"ชื่อโครงการที่ 3",code:"รหัสโครงการ",status:"แล้วเสร็จบางส่วน",pct:30,
+   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้"],
+   next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป"]},
+  {title:"ชื่อโครงการที่ 4",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:20,
+   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้"],
+   next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป"]}
+];
+
+const grid = document.getElementById('grid');
+const strip = document.getElementById('strip');
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function liHTML(text){return `<li contenteditable="true">${esc(text)}</li>`;}
+
+function cardHTML(p){
+  return `
+  <div class="card">
+    <button class="removecard" title="ลบโครงการ" onclick="this.closest('.card').remove();refresh()">✕</button>
+    <div class="top">
+      <div class="row">
+        <div class="title" contenteditable="true">${esc(p.title)}</div>
+        <div class="code" contenteditable="true">${esc(p.code)}</div>
+      </div>
+      <div class="badge"><span class="status" contenteditable="true">${esc(p.status)}</span>
+        <span class="pctwrap"><span class="pct" contenteditable="true" oninput="onPct(this)">${p.pct}</span>%</span></div>
+      <div class="bar"><i style="width:${p.pct}%"></i></div>
+    </div>
+    <div class="body">
+      <div class="col done">
+        <h4><span class="ic"></span>สัปดาห์นี้</h4>
+        <ul>${p.done.map(liHTML).join('')}</ul>
+        <button class="addline" onclick="addLine(this)">＋ เพิ่มรายการ</button>
+      </div>
+      <div class="col next">
+        <h4><span class="ic"></span>ถัดไป</h4>
+        <ul>${p.next.map(liHTML).join('')}</ul>
+        <button class="addline" onclick="addLine(this)">＋ เพิ่มรายการ</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  grid.innerHTML = SEED.map(cardHTML).join('');
+  refresh();
+}
+
+// keep a pct number clean (0-100)
+function cleanPct(el){
+  let n = parseInt((el.textContent||'').replace(/[^0-9]/g,''),10);
+  if(isNaN(n)) n=0; if(n>100)n=100;
+  return n;
+}
+function onPct(el){
+  const n = cleanPct(el);
+  const card = el.closest('.card');
+  card.querySelector('.bar>i').style.width = n+'%';
+  refreshStrip();
+}
+
+function addLine(btn){
+  const ul = btn.previousElementSibling;
+  const li = document.createElement('li');
+  li.contentEditable = "true";
+  li.textContent = "รายการใหม่";
+  ul.appendChild(li);
+  const r=document.createRange();r.selectNodeContents(li);
+  const s=window.getSelection();s.removeAllRanges();s.addRange(r);
+  li.focus();
+}
+
+function addProject(){
+  const p={title:"โครงการใหม่",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:0,
+    done:["รายการใหม่"],next:["รายการใหม่"]};
+  grid.insertAdjacentHTML('beforeend', cardHTML(p));
+  refresh();
+  grid.lastElementChild.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function resetBlank(){
+  if(!confirm('ล้างข้อมูลทั้งหมดให้กลับเป็นฟอร์มเปล่า?')) return;
+  render();
+}
+
+function refreshColors(){
+  [...grid.children].forEach((card,i)=>{
+    const [a,a2]=PALETTE[i%PALETTE.length];
+    card.style.setProperty('--a',a);
+    card.style.setProperty('--a2',a2);
+  });
+}
+
+function refreshStrip(){
+  const cards=[...grid.children];
+  strip.style.gridTemplateColumns=`repeat(${Math.max(cards.length,1)},1fr)`;
+  strip.innerHTML=cards.map((card,i)=>{
+    const [a]=PALETTE[i%PALETTE.length];
+    const title=card.querySelector('.title').textContent.trim();
+    const code=card.querySelector('.code').textContent.trim();
+    const pct=cleanPct(card.querySelector('.pct'));
+    return `<div class="pill" style="--dot:${a}"><div class="code">${esc(code)}</div><div class="pct">${pct}%</div><div class="nm">${esc(title)}</div></div>`;
+  }).join('');
+}
+
+function refresh(){refreshColors();refreshStrip();}
+
+// Enter = new bullet, Backspace on empty = remove bullet
+grid.addEventListener('keydown',e=>{
+  const li=e.target.closest('li');
+  if(!li) return;
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const nl=document.createElement('li');nl.contentEditable="true";nl.innerHTML='&#8203;';
+    li.after(nl);
+    const r=document.createRange();r.selectNodeContents(nl);r.collapse(true);
+    const s=window.getSelection();s.removeAllRanges();s.addRange(r);nl.focus();
+  }
+  if(e.key==='Backspace' && li.textContent.replace(/​/g,'').trim()===''){
+    const prev=li.previousElementSibling;
+    if(prev){e.preventDefault();li.remove();
+      const r=document.createRange();r.selectNodeContents(prev);r.collapse(false);
+      const s=window.getSelection();s.removeAllRanges();s.addRange(r);prev.focus();}
+  }
+});
+// update summary when titles/codes edited
+grid.addEventListener('input',e=>{
+  if(e.target.classList.contains('title')||e.target.classList.contains('code')) refreshStrip();
+});
+
+async function downloadPNG(){
+  document.activeElement && document.activeElement.blur();
+  await (document.fonts ? document.fonts.ready : Promise.resolve());
+  const poster=document.getElementById('poster');
+  document.body.classList.add('exporting');
+  try{
+    const canvas=await html2canvas(poster,{scale:2,useCORS:true,backgroundColor:'#fbf7f0',logging:false});
+    const link=document.createElement('a');
+    link.download='รายงานรายสัปดาห์.png';
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+  }catch(err){
+    alert('เกิดข้อผิดพลาดในการสร้างรูป: '+err.message+'\nลองเปิดไฟล์ผ่านเบราว์เซอร์ที่ต่ออินเทอร์เน็ตอยู่');
+  }finally{
+    document.body.classList.remove('exporting');
+  }
+}
+
+render();
+</script>
+</body>
+</html>
