@@ -145,6 +145,15 @@
   .udel{border:none;background:#ffe9e9;color:#e0362f;font-weight:700;border-radius:9px;padding:6px 12px;cursor:pointer;font-family:'Prompt',sans-serif;font-size:13px}
   .udel:hover{background:#ffd6d6}
 
+  #confirmmodal{z-index:260}
+  .confirmcard{width:360px;max-width:100%;background:#fff;border-radius:18px;padding:24px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+  .confirmmsg{font-family:'Prompt',sans-serif;font-weight:600;font-size:16px;margin-bottom:18px;line-height:1.45}
+  .confirmbtns{display:flex;justify-content:flex-end;gap:10px}
+  .btn-light{background:#eef1f6;color:#1a2233}
+  .btn-light:hover{background:#e2e6ee}
+  .btn-danger{background:#e0362f;color:#fff}
+  .btn-danger:hover{filter:brightness(1.06)}
+
   .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#111826;color:#fff;
     font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;padding:12px 20px;border-radius:12px;
     box-shadow:0 12px 30px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300}
@@ -230,6 +239,17 @@
   <div class="modalcard">
     <div class="modalhead">ดูย้อนหลัง <button class="mclose" onclick="closeHistory()">✕</button></div>
     <div class="ulist" id="histlist"></div>
+  </div>
+</div>
+
+<!-- ===== กล่องยืนยันสวยๆ (แทน confirm ของเบราว์เซอร์) ===== -->
+<div class="modal" id="confirmmodal">
+  <div class="confirmcard">
+    <div class="confirmmsg" id="confirmmsg"></div>
+    <div class="confirmbtns">
+      <button class="btn btn-light" onclick="confirmResolve(false)">ยกเลิก</button>
+      <button class="btn btn-danger" id="confirmok" onclick="confirmResolve(true)">ลบ</button>
+    </div>
   </div>
 </div>
 
@@ -380,12 +400,11 @@ function setWeek(){
   const p=document.getElementById('wkpick'); if(p) p.value=iso(weekRange(weekBase).mon);
   updateBanner();
 }
-function leaveOk(){ if(OFFLINE||!dirty)return true; return confirm('ยังไม่ได้บันทึกสัปดาห์นี้ ต้องการออกไหม? การแก้ไขจะหาย'); }
+async function leaveOk(){ if(OFFLINE||!dirty)return true; return await confirmBox('ยังไม่ได้บันทึกสัปดาห์นี้ ต้องการออกโดยไม่บันทึกไหม? การแก้ไขจะหาย','ออกไม่บันทึก'); }
 function afterNav(){ if(OFFLINE){ setWeek(); } else { loadWeek(); } }
-function shiftWeek(n){ if(!leaveOk())return; weekBase.setDate(weekBase.getDate()+n*7); afterNav(); }
-function thisWeek(){ if(!leaveOk())return; weekBase=new Date(); afterNav(); }
-function pickWeek(v){ if(!v)return; if(!leaveOk()){setWeek();return;} weekBase=new Date(v+'T00:00:00'); afterNav(); }
-function gotoWeek(v){ if(!v)return; if(!leaveOk())return; weekBase=new Date(v+'T00:00:00'); afterNav(); }
+async function shiftWeek(n){ if(!(await leaveOk()))return; weekBase.setDate(weekBase.getDate()+n*7); afterNav(); }
+async function thisWeek(){ if(!(await leaveOk()))return; weekBase=new Date(); afterNav(); }
+async function pickWeek(v){ if(!v)return; if(!(await leaveOk())){setWeek();return;} weekBase=new Date(v+'T00:00:00'); afterNav(); }
 
 // ---------- อ่าน/เขียนสถานะ ----------
 function collectProjects(){
@@ -409,6 +428,18 @@ function applyState(d){
 async function api(payload){ const res=await fetch(API_URL,{method:'POST',body:JSON.stringify(payload)}); return await res.json(); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
+// กล่องยืนยันในแอป (คืนค่า Promise<boolean>)
+let _confirmCb=null;
+function confirmBox(msg, okLabel){
+  return new Promise(resolve=>{
+    document.getElementById('confirmmsg').textContent=msg;
+    document.getElementById('confirmok').textContent=okLabel||'ตกลง';
+    document.getElementById('confirmmodal').style.display='flex';
+    _confirmCb=resolve;
+  });
+}
+function confirmResolve(v){ document.getElementById('confirmmodal').style.display='none';
+  if(_confirmCb){ const cb=_confirmCb; _confirmCb=null; cb(v); } }
 // true = ทำงานต่อได้ ; false = token ไม่ผ่าน (หยุดงานนี้ แต่ยังไม่เด้งออก — ปล่อยให้ ping เป็นตัวตัดสิน)
 function handle(r){ return !(r && r.error==='session'); }
 
@@ -443,7 +474,7 @@ async function doLogin(){
     else err.textContent=r.error||'ล็อกอินไม่สำเร็จ';
   }catch(e){ err.textContent='เชื่อมต่อไม่ได้ ตรวจ URL/อินเทอร์เน็ต'; }
 }
-function logout(){ if(!OFFLINE && !leaveOk()) return; forceLogout(''); }
+async function logout(){ if(!OFFLINE && !(await leaveOk())) return; forceLogout(''); }
 
 function startPing(){ stopPing(); pingFails=0; pingTimer=setInterval(async()=>{
   try{
@@ -507,9 +538,9 @@ async function renderHistory(){
       </div>`).join('');
   }catch(e){ box.innerHTML='<div class="um">โหลดไม่สำเร็จ</div>'; }
 }
-function openHist(k){ if(!leaveOk())return; const d=new Date(k+'T00:00:00'); weekBase=isNaN(d)?new Date():d; closeHistory(); loadWeek(); }
+async function openHist(k){ if(!(await leaveOk()))return; const d=new Date(k+'T00:00:00'); weekBase=isNaN(d)?new Date():d; closeHistory(); loadWeek(); }
 async function delHist(row){
-  if(!confirm('ลบรายงานสัปดาห์นี้ออกจากประวัติ?')) return;
+  if(!(await confirmBox('ลบรายงานสัปดาห์นี้ออกจากประวัติ?','ลบ'))) return;
   try{
     const r=await api({action:'deleteWeek',username:currentUser,token:currentToken,row:row});
     if(!handle(r)) return;
@@ -551,7 +582,7 @@ async function addUser(){
   }catch(e){ err.textContent='เชื่อมต่อไม่ได้'; }
 }
 async function delUser(name){
-  if(!confirm('ลบผู้ใช้ "'+name+'" ?')) return;
+  if(!(await confirmBox('ลบผู้ใช้ "'+name+'" ?','ลบ'))) return;
   try{
     const r=await api({action:'deleteUser',username:currentUser,token:currentToken,target:name});
     if(!handle(r)) return;
