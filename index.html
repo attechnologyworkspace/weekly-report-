@@ -238,7 +238,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzruXBBsfDlcHQLmwP7S-ya
 
 const OFFLINE = !API_URL || API_URL.indexOf("PASTE") >= 0;
 const SESSION_KEY = "wr_session_v1";
-let currentUser=null, currentToken=null, currentRole="user", currentName="", dirty=false, pingTimer=null;
+let currentUser=null, currentToken=null, currentRole="user", currentName="", dirty=false, pingTimer=null, pingFails=0;
 
 const PALETTE = [
   ["#ff5a5f","#ff8060"],["#8a5cf6","#b47dff"],["#12b3a6","#3fd6c8"],
@@ -403,8 +403,8 @@ function applyState(d){
 async function api(payload){ const res=await fetch(API_URL,{method:'POST',body:JSON.stringify(payload)}); return await res.json(); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
-// ถ้า backend บอกว่า session หมด/ถูกเตะ → ออกจากระบบ
-function handle(r){ if(r && r.error==='session'){ forceLogout('บัญชีนี้ถูกเข้าใช้งานจากที่อื่น จึงออกจากระบบ'); return false; } return true; }
+// true = ทำงานต่อได้ ; false = token ไม่ผ่าน (หยุดงานนี้ แต่ยังไม่เด้งออก — ปล่อยให้ ping เป็นตัวตัดสิน)
+function handle(r){ return !(r && r.error==='session'); }
 
 // ---------- session ----------
 function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(
@@ -412,12 +412,13 @@ function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(
 function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
 function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
 
-function enterApp(){
+async function enterApp(){
   document.getElementById('loginwrap').style.display='none';
   document.getElementById('who').innerHTML='ผู้ใช้: <b>'+esc(currentName||currentUser)+'</b>';
   document.getElementById('adminBtn').style.display = (currentRole==='admin') ? '' : 'none';
+  await loadWeeks();
+  await loadWeek();
   startPing();
-  loadWeeks(); loadWeek();
 }
 function showLogin(msg){
   stopPing();
@@ -439,9 +440,12 @@ async function doLogin(){
 }
 function logout(){ if(!OFFLINE && !leaveOk()) return; forceLogout(''); }
 
-function startPing(){ stopPing(); pingTimer=setInterval(async()=>{
-  try{ const r=await api({action:'ping',username:currentUser,token:currentToken}); handle(r);
-    if(r.ok){ currentRole=r.role||currentRole; document.getElementById('adminBtn').style.display=(currentRole==='admin')?'':'none'; }
+function startPing(){ stopPing(); pingFails=0; pingTimer=setInterval(async()=>{
+  try{
+    const r=await api({action:'ping',username:currentUser,token:currentToken});
+    if(r && r.ok){ pingFails=0; currentRole=r.role||currentRole;
+      document.getElementById('adminBtn').style.display=(currentRole==='admin')?'':'none'; }
+    else if(r && r.error==='session'){ if(++pingFails>=2) forceLogout('บัญชีนี้ถูกเข้าใช้งานจากที่อื่น จึงออกจากระบบ'); }
   }catch(e){} }, 25000); }
 function stopPing(){ if(pingTimer){ clearInterval(pingTimer); pingTimer=null; } }
 
