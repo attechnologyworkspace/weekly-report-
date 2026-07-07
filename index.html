@@ -100,9 +100,15 @@
   .removecard{position:absolute;top:12px;right:12px;z-index:5;width:26px;height:26px;border-radius:8px;
     border:none;background:rgba(0,0,0,.28);color:#fff;font-size:15px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
   .removecard:hover{background:rgba(0,0,0,.5)}
+  .cardcolor{position:absolute;top:13px;right:44px;z-index:5;width:24px;height:24px;padding:0;
+    border:2px solid rgba(255,255,255,.75);border-radius:50%;cursor:pointer;background:none;overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .cardcolor::-webkit-color-swatch-wrapper{padding:0}
+  .cardcolor::-webkit-color-swatch{border:none;border-radius:50%}
+  .cardcolor::-moz-color-swatch{border:none;border-radius:50%}
   .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1.5px solid var(--line);padding-top:18px}
 
-  .exporting .addline,.exporting .removecard,.exporting .delline{display:none !important}
+  .exporting .addline,.exporting .removecard,.exporting .delline,.exporting .cardcolor{display:none !important}
   .exporting [contenteditable]{box-shadow:none !important;background:none !important}
 
   /* ---------- login overlay ---------- */
@@ -232,8 +238,9 @@ function focusSpan(span,mode){
 
 function cardHTML(p){
   return `
-  <div class="card">
+  <div class="card"${p.color?` data-color="${esc(p.color)}"`:''}>
     <button class="removecard" title="ลบโครงการ" onclick="this.closest('.card').remove();refresh();markDirty()">✕</button>
+    <input type="color" class="cardcolor" title="เปลี่ยนสีการ์ด" value="${esc(p.color||'#888888')}" oninput="setCardColor(this)">
     <div class="top">
       <div class="row">
         <div class="title" contenteditable="true">${esc(p.title)}</div>
@@ -277,17 +284,36 @@ function addProject(){
   grid.insertAdjacentHTML('beforeend', cardHTML(p)); refresh(); markDirty();
   grid.lastElementChild.scrollIntoView({behavior:'smooth',block:'center'});
 }
+function lighten(hex,f){
+  const h=(hex||'#888888').replace('#','');
+  const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  const mix=c=>Math.round(c+(255-c)*f), to=c=>c.toString(16).padStart(2,'0');
+  return '#'+to(mix(r))+to(mix(g))+to(mix(b));
+}
+function applyCardColor(card,c){
+  card.style.setProperty('--a',c);
+  card.style.setProperty('--a2',lighten(c,0.28));
+}
+function setCardColor(inp){
+  const card=inp.closest('.card');
+  card.dataset.color=inp.value;
+  applyCardColor(card,inp.value);
+  refreshStrip(); markDirty();
+}
 function refreshColors(){
   [...grid.children].forEach((card,i)=>{
-    const [a,a2]=PALETTE[i%PALETTE.length];
+    let a,a2;
+    if(card.dataset.color){ a=card.dataset.color; a2=lighten(a,0.28); }
+    else { [a,a2]=PALETTE[i%PALETTE.length]; }
     card.style.setProperty('--a',a); card.style.setProperty('--a2',a2);
+    const inp=card.querySelector('.cardcolor'); if(inp) inp.value=a;
   });
 }
 function refreshStrip(){
   const cards=[...grid.children];
   strip.style.gridTemplateColumns=`repeat(${Math.max(cards.length,1)},1fr)`;
   strip.innerHTML=cards.map((card,i)=>{
-    const [a]=PALETTE[i%PALETTE.length];
+    const a = card.dataset.color || PALETTE[i%PALETTE.length][0];
     const title=card.querySelector('.title').textContent.trim();
     const code=card.querySelector('.code').textContent.trim();
     const pct=cleanPct(card.querySelector('.pct'));
@@ -359,6 +385,7 @@ function collectProjects(){
     code:  card.querySelector('.code').textContent,
     status:card.querySelector('.status').textContent,
     pct:   cleanPct(card.querySelector('.pct')),
+    color: card.dataset.color || '',
     done:  [...card.querySelectorAll('.col.done li .txt')].map(s=>s.textContent),
     next:  [...card.querySelectorAll('.col.next li .txt')].map(s=>s.textContent)
   }));
