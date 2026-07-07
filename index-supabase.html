@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ระบบรายงานความคืบหน้ารายสัปดาห์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{ --ink:#1a2233; --muted:#5a6478; --paper:#fbf7f0; --card:#fff; --line:#eae3d8; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  .toolbar{position:sticky;top:0;z-index:50;background:#111826;color:#fff;
+    padding:14px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+  .toolbar .brand{font-family:'Prompt',sans-serif;font-weight:700;font-size:16px;display:flex;align-items:center;gap:9px}
+  .toolbar .brand .dot{width:11px;height:11px;border-radius:4px;background:#31c26b}
+  .toolbar .who{font-family:'Prompt',sans-serif;font-size:13px;color:#9aa4b6;margin-right:auto}
+  .toolbar .who b{color:#e7ecf5}
+  .btn{font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;cursor:pointer;border:none;border-radius:11px;
+    padding:11px 18px;display:inline-flex;align-items:center;gap:8px;transition:transform .06s ease, filter .15s ease}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:#31c26b;color:#04120a}
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-ghost{background:#232c3d;color:#e7ecf5}
+  .btn-ghost:hover{background:#2c374c}
+  .btn-blue{background:#2f8bff;color:#fff}
+  .btn-blue:hover{filter:brightness(1.06)}
+  .btn-sm{padding:8px 12px;font-size:13px}
+  .wknav{display:flex;align-items:center;gap:6px}
+  .wkbtn{padding:9px 12px}
+  .wkpick,.hist{font-family:'Prompt',sans-serif;font-weight:600;font-size:13px;border:none;border-radius:10px;
+    padding:8px 10px;background:#232c3d;color:#e7ecf5;cursor:pointer;max-width:210px}
+  .wkpick::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.7;cursor:pointer}
+
+  /* แถบบอกว่ากำลังดูย้อนหลัง */
+  .viewbanner{background:#8a5cf6;color:#fff;
+    padding:9px 22px;display:none;align-items:center;gap:12px;font-family:'Prompt',sans-serif;font-weight:600;font-size:14px}
+  .viewbanner b{font-weight:800}
+  .viewbanner .btn{margin-left:auto}
+
+  .stage{padding:30px 20px 60px;display:flex;justify-content:center}
+  .poster{width:1240px;padding:52px 56px 60px;background:
+      radial-gradient(1200px 480px at 8% -6%, #fff4e8 0%, rgba(255,244,232,0) 60%),
+      radial-gradient(1000px 460px at 100% 0%, #eef4ff 0%, rgba(238,244,255,0) 55%),
+      var(--paper);border-radius:8px;box-shadow:0 20px 60px rgba(26,34,51,.14)}
+
+  [contenteditable]{outline:none;border-radius:5px;transition:box-shadow .12s,background .12s}
+  [contenteditable]:hover{box-shadow:0 0 0 2px rgba(47,139,255,.28)}
+  [contenteditable]:focus{box-shadow:0 0 0 2px #2f8bff;background:rgba(47,139,255,.06)}
+  .top [contenteditable]:hover{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+  .top [contenteditable]:focus{box-shadow:0 0 0 2px #fff;background:rgba(255,255,255,.16)}
+
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:38px}
+  .eyebrow{font-family:'Prompt',sans-serif;font-weight:600;font-size:15px;letter-spacing:.14em;color:#ff5a5f;
+    display:inline-flex;align-items:center;gap:10px;margin-bottom:12px}
+  .eyebrow::before{content:"";width:26px;height:3px;border-radius:3px;background:#ff5a5f}
+  h1{font-family:'Prompt',sans-serif;font-weight:800;font-size:44px;line-height:1.12;letter-spacing:-.01em}
+  h1 .accent{color:#8a5cf6}
+  .daterange{text-align:right;flex-shrink:0}
+  .daterange .lbl{font-size:14px;color:var(--muted);font-weight:500;margin-bottom:4px}
+  .daterange .val{font-family:'Prompt',sans-serif;font-weight:700;font-size:24px;color:var(--ink);
+    background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 20px;box-shadow:0 6px 18px rgba(26,34,51,.05)}
+
+  .strip{display:grid;gap:14px;margin-bottom:34px}
+  .pill{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden;box-shadow:0 6px 16px rgba(26,34,51,.04)}
+  .pill::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--dot)}
+  .pill .code{font-family:'Prompt',sans-serif;font-weight:700;font-size:13px;color:var(--muted);margin-bottom:2px}
+  .pill .pct{font-family:'Prompt',sans-serif;font-weight:800;font-size:30px;line-height:1;color:var(--dot)}
+  .pill .nm{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.3;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .card{background:var(--card);border-radius:20px;border:1.5px solid var(--line);overflow:hidden;
+    box-shadow:0 10px 30px rgba(26,34,51,.06);display:flex;flex-direction:column;position:relative}
+  .card .top{padding:20px 22px 18px;color:#fff;background:linear-gradient(135deg,var(--a) 0%,var(--a2) 100%)}
+  .card .top .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-right:62px}
+  .card .top .title{font-family:'Prompt',sans-serif;font-weight:700;font-size:20px;line-height:1.2;flex:1}
+  .card .top .code{font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;background:rgba(255,255,255,.22);padding:5px 10px;border-radius:8px;white-space:nowrap}
+  .badge{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-family:'Prompt',sans-serif;font-weight:600;font-size:13px}
+  .badge .pctwrap{font-weight:800;font-size:15px}
+  .bar{height:9px;border-radius:9px;background:rgba(255,255,255,.28);margin-top:13px;overflow:hidden}
+  .bar>i{display:block;height:100%;border-radius:9px;background:#fff;transition:width .2s ease}
+
+  .body{padding:18px 22px 20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1}
+  .col h4{font-family:'Prompt',sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em;display:flex;align-items:center;gap:7px;margin-bottom:10px}
+  .col h4 .ic{width:9px;height:9px;border-radius:3px;background:var(--a)}
+  .col.next h4 .ic{background:var(--muted);opacity:.5}
+  ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+  li{font-size:13.5px;line-height:1.42;color:#37414f;padding-left:16px;padding-right:22px;position:relative}
+  li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--a)}
+  li .txt{display:inline;outline:none}
+  .col.next li{color:var(--muted)}
+  .col.next li::before{background:#c4cbd6}
+  .delline{position:absolute;right:0;top:1px;width:17px;height:17px;padding:0;border:none;background:none;
+    color:#c4cbd6;font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .12s,color .12s;
+    display:flex;align-items:center;justify-content:center;border-radius:4px}
+  li:hover .delline{opacity:1}
+  .delline:hover{color:#ff5a5f;background:rgba(255,90,95,.1)}
+  .addline{margin-top:8px;font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;color:var(--muted);
+    cursor:pointer;background:none;border:1px dashed #cfd6e2;border-radius:8px;padding:4px 10px}
+  .addline:hover{color:var(--ink);border-color:#9aa4b6}
+  .removecard{position:absolute;top:12px;right:12px;z-index:5;width:26px;height:26px;border-radius:8px;
+    border:none;background:rgba(0,0,0,.28);color:#fff;font-size:15px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+  .removecard:hover{background:rgba(0,0,0,.5)}
+  .cardcolor{position:absolute;top:13px;right:44px;z-index:5;width:24px;height:24px;padding:0;
+    border:2px solid rgba(255,255,255,.75);border-radius:50%;cursor:pointer;background:none;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .cardcolor::-webkit-color-swatch-wrapper{padding:0}
+  .cardcolor::-webkit-color-swatch{border:none;border-radius:50%}
+  .cardcolor::-moz-color-swatch{border:none;border-radius:50%}
+  .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1.5px solid var(--line);padding-top:18px}
+
+  .exporting .addline,.exporting .removecard,.exporting .delline,.exporting .cardcolor{display:none !important}
+  .exporting .card .top .row{padding-right:0 !important}
+  .exporting [contenteditable]{box-shadow:none !important;background:none !important}
+
+  /* login */
+  .loginwrap{position:fixed;inset:0;z-index:200;background:linear-gradient(135deg,#111826,#1b2740);
+    display:none;align-items:center;justify-content:center;padding:20px}
+  .logincard{width:360px;max-width:100%;background:#fff;border-radius:20px;padding:34px 30px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+  .loginbrand{font-family:'Prompt',sans-serif;font-weight:800;font-size:23px;display:flex;align-items:center;gap:10px}
+  .loginbrand .dot{width:13px;height:13px;border-radius:5px;background:#31c26b}
+  .loginsub{color:var(--muted);font-size:14px;margin:6px 0 22px}
+  .lin{width:100%;font-family:'Sarabun',sans-serif;font-size:15px;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:12px;outline:none;transition:border-color .12s}
+  .lin:focus{border-color:#2f8bff}
+  .lbtn{width:100%;justify-content:center;font-size:15px;padding:13px;margin-top:4px}
+  .lerr{color:#e0362f;font-size:13px;min-height:18px;margin-bottom:4px;font-weight:600}
+
+  /* modal จัดการผู้ใช้ */
+  .modal{position:fixed;inset:0;z-index:210;background:rgba(17,24,38,.55);display:none;align-items:center;justify-content:center;padding:20px}
+  .modalcard{width:520px;max-width:100%;max-height:88vh;overflow:auto;background:#fff;border-radius:20px;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+  .modalhead{font-family:'Prompt',sans-serif;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .mclose{border:none;background:#eef1f6;width:32px;height:32px;border-radius:10px;font-size:16px;cursor:pointer}
+  .uform{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  .uform .lin{margin-bottom:0}
+  .uform .full{grid-column:1/-1}
+  .uerr{color:#e0362f;font-size:13px;min-height:18px;font-weight:600;margin:6px 0}
+  .ulist{margin-top:8px;border-top:1.5px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+  .urow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px}
+  .urow .un{font-family:'Prompt',sans-serif;font-weight:700}
+  .urow .ur{font-size:12px;color:#fff;background:#8a5cf6;padding:2px 8px;border-radius:20px;font-family:'Prompt',sans-serif;font-weight:600}
+  .urow .ur.user{background:#98a2b3}
+  .urow .um{color:var(--muted);font-size:13px;margin-right:auto}
+  .udel{border:none;background:#ffe9e9;color:#e0362f;font-weight:700;border-radius:9px;padding:6px 12px;cursor:pointer;font-family:'Prompt',sans-serif;font-size:13px}
+  .udel:hover{background:#ffd6d6}
+
+  /* หน้าจัดการผู้ใช้ (เต็มหน้า) */
+  .adminpage{position:fixed;inset:0;z-index:220;background:#eef1f6;display:none;flex-direction:column;overflow:auto}
+  .adminbar{position:sticky;top:0;background:#111826;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+  .adminbar .admintitle{font-family:'Prompt',sans-serif;font-weight:700;font-size:18px}
+  .adminbody{max-width:720px;margin:0 auto;width:100%;padding:26px 20px 60px;display:flex;flex-direction:column;gap:22px}
+  .adminsection{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 10px 30px rgba(26,34,51,.05)}
+  .secttitle{font-family:'Prompt',sans-serif;font-weight:700;font-size:16px;margin-bottom:14px}
+
+  #confirmmodal{z-index:260}
+  .confirmcard{width:360px;max-width:100%;background:#fff;border-radius:18px;padding:24px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+  .confirmmsg{font-family:'Prompt',sans-serif;font-weight:600;font-size:16px;margin-bottom:18px;line-height:1.45}
+  .confirmbtns{display:flex;justify-content:flex-end;gap:10px}
+  .btn-light{background:#eef1f6;color:#1a2233}
+  .btn-light:hover{background:#e2e6ee}
+  .btn-danger{background:#e0362f;color:#fff}
+  .btn-danger:hover{filter:brightness(1.06)}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#111826;color:#fff;
+    font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;padding:12px 20px;border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ===== หน้าล็อกอิน ===== -->
+<div class="loginwrap" id="loginwrap">
+  <div class="logincard">
+    <div class="loginbrand"><span class="dot"></span>รายงานประจำสัปดาห์</div>
+    <div class="loginsub">เข้าสู่ระบบเพื่อจัดการรายงานของคุณ</div>
+    <input id="lu" class="lin" placeholder="ชื่อผู้ใช้" autocomplete="username">
+    <input id="lp" class="lin" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+    <div class="lerr" id="lerr"></div>
+    <button class="btn btn-primary lbtn" onclick="doLogin()">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<!-- ===== แถบดูย้อนหลัง ===== -->
+<div class="viewbanner" id="viewbanner">
+  📅 กำลังดูรายงานย้อนหลัง: <b id="vbweek"></b>
+  <button class="btn btn-ghost btn-sm" onclick="thisWeek()">↩ กลับสัปดาห์ปัจจุบัน</button>
+</div>
+
+<div class="toolbar">
+  <div class="brand"><span class="dot"></span>รายงานรายสัปดาห์</div>
+  <span class="who" id="who"></span>
+  <span class="wknav">
+    <button class="btn btn-ghost wkbtn" onclick="shiftWeek(-1)" title="สัปดาห์ก่อนหน้า">◀</button>
+    <button class="btn btn-ghost wkbtn" onclick="shiftWeek(1)" title="สัปดาห์ถัดไป">▶</button>
+    <input type="date" id="wkpick" class="wkpick" onchange="pickWeek(this.value)" title="เลือกวันที่ในสัปดาห์ที่ต้องการ">
+    <button class="btn btn-ghost" onclick="thisWeek()">สัปดาห์นี้</button>
+  </span>
+  <button class="btn btn-ghost online-only" id="histBtn" onclick="openHistory()" title="ดูรายงานย้อนหลัง">📚 ดูย้อนหลัง</button>
+  <button class="btn btn-ghost" onclick="addProject()">＋ เพิ่มโครงการ</button>
+  <button class="btn btn-ghost" onclick="resetDefault()" title="ล้างเป็นฟอร์มเริ่มต้น">↺ ค่าเริ่มต้น</button>
+  <button class="btn btn-primary" onclick="downloadPNG()">⬇ PNG (บันทึก+โหลด)</button>
+  <button class="btn btn-ghost online-only" id="adminBtn" onclick="openUsers()" style="display:none">👥 จัดการผู้ใช้</button>
+  <button class="btn btn-ghost online-only" id="logoutBtn" onclick="logout()">ออกจากระบบ</button>
+</div>
+
+<div class="stage">
+  <div class="poster" id="poster">
+    <div class="head">
+      <div>
+        <span class="eyebrow" id="eyebrow" contenteditable="true">รายงานประจำสัปดาห์</span>
+        <h1><span id="h1a" contenteditable="true">อัปเดตความคืบหน้า</span><br><span id="h1b" class="accent" contenteditable="true">งานประจำสัปดาห์</span></h1>
+      </div>
+      <div class="daterange">
+        <div class="lbl">ช่วงเวลา</div>
+        <div class="val" id="drange" contenteditable="true">ระบุช่วงวันที่</div>
+      </div>
+    </div>
+    <div class="strip" id="strip"></div>
+    <div class="grid" id="grid"></div>
+    <div class="foot">
+      <div id="foot1" contenteditable="true">สรุปความคืบหน้าโครงการ</div>
+      <div id="frange" contenteditable="true">ระบุช่วงวันที่</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== หน้าจัดการผู้ใช้ (เต็มหน้า, เฉพาะ admin) ===== -->
+<div class="adminpage" id="adminpage">
+  <div class="adminbar">
+    <button class="btn btn-light" onclick="closeUsers()">← กลับ</button>
+    <div class="admintitle">จัดการผู้ใช้</div>
+  </div>
+  <div class="adminbody">
+    <div class="adminsection">
+      <div class="secttitle">＋ เพิ่มผู้ใช้ใหม่</div>
+      <div class="uform">
+        <input id="nu_user" class="lin" placeholder="ชื่อผู้ใช้ (อังกฤษ)">
+        <input id="nu_pass" class="lin" placeholder="รหัสผ่าน">
+        <input id="nu_name" class="lin" placeholder="ชื่อที่แสดง">
+        <select id="nu_role" class="lin"><option value="user">ผู้ใช้ทั่วไป</option><option value="admin">แอดมิน</option></select>
+        <button class="btn btn-primary full" onclick="addUser()">＋ เพิ่มผู้ใช้</button>
+      </div>
+      <div class="uerr" id="uerr"></div>
+    </div>
+    <div class="adminsection">
+      <div class="secttitle">รายชื่อผู้ใช้ทั้งหมด</div>
+      <div class="ulist" id="ulist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== modal ดูย้อนหลัง ===== -->
+<div class="modal" id="histmodal">
+  <div class="modalcard">
+    <div class="modalhead">ดูย้อนหลัง <button class="mclose" onclick="closeHistory()">✕</button></div>
+    <div class="ulist" id="histlist"></div>
+  </div>
+</div>
+
+<!-- ===== กล่องยืนยันสวยๆ ===== -->
+<div class="modal" id="confirmmodal">
+  <div class="confirmcard">
+    <div class="confirmmsg" id="confirmmsg"></div>
+    <div class="confirmbtns">
+      <button class="btn btn-light" onclick="confirmResolve(false)">ยกเลิก</button>
+      <button class="btn btn-danger" id="confirmok" onclick="confirmResolve(true)">ลบ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/*************************************************************
+ * ตั้งค่า Supabase — วางค่า 2 ตัวจากโปรเจกต์คุณ
+ *   หาได้ที่: Supabase > Project Settings > API
+ *   - Project URL         → SUPABASE_URL
+ *   - Project API keys: anon public → SUPABASE_ANON_KEY
+ * ถ้ายังไม่ตั้ง (เป็น PASTE...) จะเป็นโหมดออฟไลน์ (แก้+โหลด PNG ได้ ไม่มีล็อกอิน)
+ *************************************************************/
+const SUPABASE_URL = "https://qikjpjydfeujzkazzlcp.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "sb_publishable_SVcBLjI090nDFFo-dnMSyw_3o5RX06K";
+
+const OFFLINE = !SUPABASE_URL || SUPABASE_URL.indexOf("PASTE") >= 0;
+const SESSION_KEY = "wr_session_v1";
+const supa = OFFLINE ? null : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser=null, currentToken=null, currentRole="user", currentName="", dirty=false, pingTimer=null, pingFails=0;
+
+const PALETTE = [
+  ["#ff5a5f","#ff8060"],["#8a5cf6","#b47dff"],["#12b3a6","#3fd6c8"],
+  ["#2f8bff","#5fa8ff"],["#ff8a3d","#ffb066"],["#31c26b","#5ad98a"],
+  ["#f4419b","#ff77bd"],["#f5b301","#ffcf4d"]
+];
+const SEED = [
+  {title:"ชื่อโครงการที่ 1",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:50,
+   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้"],next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป"]},
+  {title:"ชื่อโครงการที่ 2",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:30,
+   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้"],next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป"]}
+];
+
+const grid = document.getElementById('grid');
+const strip = document.getElementById('strip');
+const poster = document.getElementById('poster');
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function liHTML(text){
+  return `<li><span class="txt" contenteditable="true">${esc(text)}</span><button class="delline" title="ลบรายการ" contenteditable="false" onclick="delLine(this)">✕</button></li>`;
+}
+function makeLi(text){ const li=document.createElement('li'); li.innerHTML=liHTML(text).replace(/^<li>|<\/li>$/g,''); return li; }
+function delLine(btn){ const li=btn.closest('li'); if(li) li.remove(); markDirty(); }
+function focusSpan(span,mode){ if(!span)return; span.focus(); const r=document.createRange(); r.selectNodeContents(span);
+  if(mode==='end')r.collapse(false); else if(mode==='start')r.collapse(true); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+function lighten(hex,f){
+  const h=(hex||'#888888').replace('#','');
+  const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  const mix=c=>Math.round(c+(255-c)*f), to=c=>c.toString(16).padStart(2,'0');
+  return '#'+to(mix(r))+to(mix(g))+to(mix(b));
+}
+function applyCardColor(card,c){ card.style.setProperty('--a',c); card.style.setProperty('--a2',lighten(c,0.28)); }
+function setCardColor(inp){ const card=inp.closest('.card'); card.dataset.color=inp.value; applyCardColor(card,inp.value); refreshStrip(); markDirty(); }
+
+function cardHTML(p){
+  return `
+  <div class="card"${p.color?` data-color="${esc(p.color)}"`:''}>
+    <button class="removecard" title="ลบโครงการ" onclick="this.closest('.card').remove();refresh();markDirty()">✕</button>
+    <input type="color" class="cardcolor" title="เปลี่ยนสีการ์ด" value="${esc(p.color||'#888888')}" oninput="setCardColor(this)">
+    <div class="top">
+      <div class="row">
+        <div class="title" contenteditable="true">${esc(p.title)}</div>
+        <div class="code" contenteditable="true">${esc(p.code)}</div>
+      </div>
+      <div class="badge"><span class="status" contenteditable="true">${esc(p.status)}</span>
+        <span class="pctwrap"><span class="pct" contenteditable="true" oninput="onPct(this)">${p.pct}</span>%</span></div>
+      <div class="bar"><i style="width:${p.pct}%"></i></div>
+    </div>
+    <div class="body">
+      <div class="col done">
+        <h4><span class="ic"></span>สัปดาห์นี้</h4>
+        <ul>${(p.done||[]).map(liHTML).join('')}</ul>
+        <button class="addline" onclick="addLine(this)">＋ เพิ่มรายการ</button>
+      </div>
+      <div class="col next">
+        <h4><span class="ic"></span>ถัดไป</h4>
+        <ul>${(p.next||[]).map(liHTML).join('')}</ul>
+        <button class="addline" onclick="addLine(this)">＋ เพิ่มรายการ</button>
+      </div>
+    </div>
+  </div>`;
+}
+function render(){ grid.innerHTML = SEED.map(cardHTML).join(''); refresh(); }
+
+function cleanPct(el){ let n=parseInt((el.textContent||'').replace(/[^0-9]/g,''),10); if(isNaN(n))n=0; if(n>100)n=100; return n; }
+function onPct(el){ const n=cleanPct(el); el.closest('.card').querySelector('.bar>i').style.width=n+'%'; refreshStrip(); markDirty(); }
+function addLine(btn){ const ul=btn.previousElementSibling; const li=makeLi("รายการใหม่"); ul.appendChild(li); focusSpan(li.querySelector('.txt'),'all'); markDirty(); }
+function addProject(){
+  const p={title:"โครงการใหม่",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:0,done:["รายการใหม่"],next:["รายการใหม่"]};
+  grid.insertAdjacentHTML('beforeend', cardHTML(p)); refresh(); markDirty();
+  grid.lastElementChild.scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function resetDefault(){
+  if(!(await confirmBox('ล้างหน้านี้เป็นฟอร์มเริ่มต้น? สิ่งที่ยังไม่ได้กด PNG จะหาย','ล้าง'))) return;
+  render(); setWeek(); dirty=false;
+}
+function refreshColors(){
+  [...grid.children].forEach((card,i)=>{
+    let a,a2;
+    if(card.dataset.color){ a=card.dataset.color; a2=lighten(a,0.28); } else { [a,a2]=PALETTE[i%PALETTE.length]; }
+    card.style.setProperty('--a',a); card.style.setProperty('--a2',a2);
+    const inp=card.querySelector('.cardcolor'); if(inp) inp.value=a;
+  });
+}
+function refreshStrip(){
+  const cards=[...grid.children];
+  strip.style.gridTemplateColumns=`repeat(${Math.max(cards.length,1)},1fr)`;
+  strip.innerHTML=cards.map((card,i)=>{
+    const a = card.dataset.color || PALETTE[i%PALETTE.length][0];
+    const title=card.querySelector('.title').textContent.trim();
+    const code=card.querySelector('.code').textContent.trim();
+    const pct=cleanPct(card.querySelector('.pct'));
+    return `<div class="pill" style="--dot:${a}"><div class="code">${esc(code)}</div><div class="pct">${pct}%</div><div class="nm">${esc(title)}</div></div>`;
+  }).join('');
+}
+function refresh(){refreshColors();refreshStrip();}
+function markDirty(){ dirty=true; }
+
+grid.addEventListener('keydown',e=>{
+  const span=e.target; if(!span.classList||!span.classList.contains('txt'))return;
+  const li=span.closest('li'); if(!li)return;
+  if(e.key==='Enter'){ e.preventDefault(); const nl=makeLi(''); li.after(nl); focusSpan(nl.querySelector('.txt'),'start'); markDirty(); }
+  if(e.key==='Backspace' && span.textContent.replace(/​/g,'').trim()===''){
+    const prev=li.previousElementSibling; if(prev){ e.preventDefault(); li.remove(); focusSpan(prev.querySelector('.txt'),'end'); markDirty(); }
+  }
+});
+grid.addEventListener('input',e=>{ if(e.target.classList.contains('title')||e.target.classList.contains('code')) refreshStrip(); });
+poster.addEventListener('input',markDirty);
+poster.addEventListener('paste',e=>{
+  const t=e.target; if(!t||!t.isContentEditable)return; e.preventDefault();
+  const text=((e.clipboardData||window.clipboardData).getData('text/plain')||'').replace(/\r\n|\r|\n/g,' ').trim();
+  document.execCommand('insertText',false,text);
+});
+
+// ---------- จัดการสัปดาห์ ----------
+let weekBase = new Date();
+const THMON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function weekRange(base){ let d=new Date(base); if(isNaN(d)) d=new Date(); const day=d.getDay();
+  const mon=new Date(d); mon.setDate(d.getDate()+(day===0?-6:1-day));
+  const fri=new Date(mon); fri.setDate(mon.getDate()+4); return {mon,fri}; }
+function iso(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function weekKey(){ return iso(weekRange(weekBase).mon); }
+function fmtRange(){ const {mon,fri}=weekRange(weekBase);
+  return `${mon.getDate()} ${THMON[mon.getMonth()]} – ${fri.getDate()} ${THMON[fri.getMonth()]} ${fri.getFullYear()+543}`; }
+function updateBanner(){
+  const banner=document.getElementById('viewbanner');
+  const isCurrent = OFFLINE || (weekKey()===iso(weekRange(new Date()).mon));
+  if(isCurrent){ banner.style.display='none'; }
+  else { banner.style.display='flex'; document.getElementById('vbweek').textContent=fmtRange(); }
+}
+function setWeek(){
+  const r=fmtRange();
+  document.getElementById('drange').textContent=r;
+  document.getElementById('frange').textContent='ประจำสัปดาห์ '+r;
+  const p=document.getElementById('wkpick'); if(p) p.value=iso(weekRange(weekBase).mon);
+  updateBanner();
+}
+async function leaveOk(){ if(OFFLINE||!dirty)return true; return await confirmBox('ยังไม่ได้บันทึกสัปดาห์นี้ ต้องการออกโดยไม่บันทึกไหม? การแก้ไขจะหาย','ออกไม่บันทึก'); }
+function afterNav(){ if(OFFLINE){ setWeek(); } else { loadWeek(); } }
+async function shiftWeek(n){ if(!(await leaveOk()))return; weekBase.setDate(weekBase.getDate()+n*7); afterNav(); }
+async function thisWeek(){ if(!(await leaveOk()))return; weekBase=new Date(); afterNav(); }
+async function pickWeek(v){ if(!v)return; if(!(await leaveOk())){setWeek();return;} weekBase=new Date(v+'T00:00:00'); afterNav(); }
+
+// ---------- อ่าน/เขียนสถานะ ----------
+function collectProjects(){
+  return [...grid.children].map(card=>({
+    title:card.querySelector('.title').textContent, code:card.querySelector('.code').textContent,
+    status:card.querySelector('.status').textContent, pct:cleanPct(card.querySelector('.pct')),
+    color:card.dataset.color||'',
+    done:[...card.querySelectorAll('.col.done li .txt')].map(s=>s.textContent),
+    next:[...card.querySelectorAll('.col.next li .txt')].map(s=>s.textContent)
+  }));
+}
+function collectState(){ const t=id=>document.getElementById(id).textContent;
+  return {eyebrow:t('eyebrow'),h1a:t('h1a'),h1b:t('h1b'),drange:t('drange'),foot1:t('foot1'),foot2:t('frange'),projects:collectProjects()}; }
+function applyState(d){
+  if(!d)return; const set=(id,v)=>{ if(v!=null){const el=document.getElementById(id); if(el)el.textContent=v;} };
+  if(d.projects){ grid.innerHTML=d.projects.map(cardHTML).join(''); refresh(); }
+  set('eyebrow',d.eyebrow); set('h1a',d.h1a); set('h1b',d.h1b); set('drange',d.drange); set('foot1',d.foot1); set('frange',d.foot2);
+}
+
+// ---------- API (คุยกับ Supabase ผ่าน RPC) ----------
+async function api(payload){
+  if(OFFLINE) return {ok:false, error:'offline'};
+  const p=payload; let fn, args;
+  switch(p.action){
+    case 'login':      fn='app_login';       args={p_username:p.username, p_password:p.password}; break;
+    case 'ping':       fn='app_ping';        args={p_username:p.username, p_token:p.token}; break;
+    case 'save':       fn='app_save';        args={p_username:p.username, p_token:p.token, p_week_key:p.weekKey, p_range_label:p.rangeLabel, p_data:p.data}; break;
+    case 'load':       fn='app_load';        args={p_username:p.username, p_token:p.token, p_week_key:p.weekKey}; break;
+    case 'loadRow':    fn='app_load_row';    args={p_username:p.username, p_token:p.token, p_row:p.row}; break;
+    case 'weeks':      fn='app_weeks';       args={p_username:p.username, p_token:p.token}; break;
+    case 'deleteWeek': fn='app_delete_week'; args={p_username:p.username, p_token:p.token, p_row:p.row}; break;
+    case 'addUser':    fn='app_add_user';    args={p_username:p.username, p_token:p.token, p_new_username:p.newUser.username, p_new_password:p.newUser.password, p_display:p.newUser.displayName, p_role:p.newUser.role}; break;
+    case 'listUsers':  fn='app_list_users';  args={p_username:p.username, p_token:p.token}; break;
+    case 'deleteUser': fn='app_delete_user'; args={p_username:p.username, p_token:p.token, p_target:p.target}; break;
+    default: return {ok:false, error:'unknown action'};
+  }
+  const { data, error } = await supa.rpc(fn, args);
+  if(error) return {ok:false, error:error.message};
+  return data;
+}
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
+// กล่องยืนยันในแอป (คืนค่า Promise<boolean>)
+let _confirmCb=null;
+function confirmBox(msg, okLabel){
+  return new Promise(resolve=>{
+    document.getElementById('confirmmsg').textContent=msg;
+    document.getElementById('confirmok').textContent=okLabel||'ตกลง';
+    document.getElementById('confirmmodal').style.display='flex';
+    _confirmCb=resolve;
+  });
+}
+function confirmResolve(v){ document.getElementById('confirmmodal').style.display='none';
+  if(_confirmCb){ const cb=_confirmCb; _confirmCb=null; cb(v); } }
+// true = ทำงานต่อได้ ; false = token ไม่ผ่าน (ปล่อยให้ ping เป็นตัวตัดสิน)
+function handle(r){ return !(r && r.error==='session'); }
+
+// ---------- session ----------
+function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(
+  {user:currentUser,token:currentToken,role:currentRole,name:currentName})); }catch(e){} }
+function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+
+async function enterApp(){
+  document.getElementById('loginwrap').style.display='none';
+  document.getElementById('who').innerHTML='ผู้ใช้: <b>'+esc(currentName||currentUser)+'</b>';
+  document.getElementById('adminBtn').style.display = (currentRole==='admin') ? '' : 'none';
+  await loadWeek();
+  startPing();
+}
+function showLogin(msg){
+  stopPing();
+  document.getElementById('loginwrap').style.display='flex';
+  if(msg) document.getElementById('lerr').textContent=msg;
+}
+function forceLogout(msg){ clearSession(); currentUser=currentToken=null; showLogin(msg||''); }
+
+async function doLogin(){
+  const u=document.getElementById('lu').value.trim(), p=document.getElementById('lp').value;
+  const err=document.getElementById('lerr'); err.textContent='';
+  if(!u||!p){ err.textContent='กรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
+  try{
+    const r=await api({action:'login',username:u,password:p});
+    if(r.ok){ currentUser=u; currentToken=r.token; currentRole=r.role||'user'; currentName=r.displayName||u;
+      saveSession(); document.getElementById('lp').value=''; enterApp(); }
+    else err.textContent=r.error||'ล็อกอินไม่สำเร็จ';
+  }catch(e){ err.textContent='เชื่อมต่อไม่ได้ ตรวจค่า Supabase/อินเทอร์เน็ต'; }
+}
+async function logout(){ if(!OFFLINE && !(await leaveOk())) return; forceLogout(''); }
+
+function startPing(){ stopPing(); pingFails=0; pingTimer=setInterval(async()=>{
+  try{
+    const r=await api({action:'ping',username:currentUser,token:currentToken});
+    if(r && r.ok){ pingFails=0; currentRole=r.role||currentRole;
+      document.getElementById('adminBtn').style.display=(currentRole==='admin')?'':'none'; }
+    else if(r && r.error==='session'){ if(++pingFails>=2) forceLogout('บัญชีนี้ถูกเข้าใช้งานจากที่อื่น จึงออกจากระบบ'); }
+  }catch(e){} }, 25000); }
+function stopPing(){ if(pingTimer){ clearInterval(pingTimer); pingTimer=null; } }
+
+// ---------- รายงาน ----------
+async function autoSave(){
+  if(OFFLINE || !currentUser) return true;
+  try{
+    const r=await api({action:'save',username:currentUser,token:currentToken,weekKey:weekKey(),rangeLabel:fmtRange(),data:collectState()});
+    if(!handle(r)) return false;
+    if(r.ok){ dirty=false; return true; }
+  }catch(e){}
+  return false;
+}
+async function loadWeek(){
+  if(OFFLINE){ render(); setWeek(); return; }
+  setWeek();
+  try{
+    const r=await api({action:'load',username:currentUser,token:currentToken,weekKey:weekKey()});
+    if(!handle(r)) return;
+    if(r.ok && r.data) applyState(r.data); else render();
+  }catch(e){ toast('โหลดข้อมูลไม่สำเร็จ'); }
+  dirty=false; setWeek();
+}
+
+// ---------- หน้าต่างดูย้อนหลัง ----------
+function openHistory(){ document.getElementById('histmodal').style.display='flex'; renderHistory(); }
+function closeHistory(){ document.getElementById('histmodal').style.display='none'; }
+function fmtSaved(ts){ if(!ts) return ''; const d=new Date(ts); if(isNaN(d)) return '';
+  return `บันทึก ${d.getDate()}/${d.getMonth()+1} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+async function renderHistory(){
+  const box=document.getElementById('histlist'); box.innerHTML='<div class="um">กำลังโหลด...</div>';
+  try{
+    const r=await api({action:'weeks',username:currentUser,token:currentToken});
+    if(!handle(r)){ box.innerHTML=''; return; }
+    if(!r.ok || !r.weeks.length){ box.innerHTML='<div class="um">ยังไม่มีรายงานที่บันทึกไว้</div>'; return; }
+    box.innerHTML=r.weeks.map(w=>`
+      <div class="urow">
+        <span class="un">${esc(w.rangeLabel||w.weekKey||'(ไม่มีชื่อ)')}</span>
+        <span class="um">${esc(fmtSaved(w.updatedAt))}</span>
+        <button class="btn btn-blue btn-sm" onclick="openHist(${w.row},'${esc(w.weekKey)}')">เปิด</button>
+        <button class="udel" onclick="delHist(${w.row})">ลบ</button>
+      </div>`).join('');
+  }catch(e){ box.innerHTML='<div class="um">โหลดไม่สำเร็จ</div>'; }
+}
+async function openHist(row, k){
+  if(!(await leaveOk()))return;
+  closeHistory();
+  const d=new Date(k+'T00:00:00'); weekBase=isNaN(d)?new Date():d;
+  setWeek();
+  try{
+    const r=await api({action:'loadRow',username:currentUser,token:currentToken,row:row});
+    if(!handle(r)) return;
+    if(r.ok && r.data) applyState(r.data); else render();
+  }catch(e){ toast('เปิดไม่สำเร็จ'); }
+  dirty=false; setWeek();
+}
+async function delHist(row){
+  if(!(await confirmBox('ลบรายงานสัปดาห์นี้ออกจากประวัติ?','ลบ'))) return;
+  try{
+    const r=await api({action:'deleteWeek',username:currentUser,token:currentToken,row:row});
+    if(!handle(r)) return;
+    if(r.ok){ toast('ลบแล้ว'); renderHistory(); } else toast(r.error||'ลบไม่สำเร็จ');
+  }catch(e){ toast('ลบไม่สำเร็จ'); }
+}
+
+// ---------- admin: จัดการผู้ใช้ ----------
+function openUsers(){ document.getElementById('uerr').textContent=''; document.getElementById('adminpage').style.display='flex'; loadUserList(); }
+function closeUsers(){ document.getElementById('adminpage').style.display='none'; }
+async function loadUserList(){
+  try{
+    const r=await api({action:'listUsers',username:currentUser,token:currentToken});
+    if(!handle(r)) return;
+    const box=document.getElementById('ulist');
+    if(!r.ok){ box.innerHTML=''; document.getElementById('uerr').textContent=r.error||''; return; }
+    box.innerHTML=r.users.map(u=>`
+      <div class="urow">
+        <span class="un">${esc(u.username)}</span>
+        <span class="ur ${u.role==='admin'?'':'user'}">${u.role==='admin'?'แอดมิน':'ผู้ใช้'}</span>
+        <span class="um">${esc(u.displayName||'')}</span>
+        ${u.role==='admin'?'':`<button class="udel" onclick="delUser('${esc(u.username)}')">ลบ</button>`}
+      </div>`).join('');
+  }catch(e){}
+}
+async function addUser(){
+  const err=document.getElementById('uerr'); err.textContent='';
+  const nu={ username:document.getElementById('nu_user').value.trim(),
+    password:document.getElementById('nu_pass').value,
+    displayName:document.getElementById('nu_name').value.trim(),
+    role:document.getElementById('nu_role').value };
+  if(!nu.username||!nu.password){ err.textContent='กรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
+  try{
+    const r=await api({action:'addUser',username:currentUser,token:currentToken,newUser:nu});
+    if(!handle(r)) return;
+    if(r.ok){ document.getElementById('nu_user').value=''; document.getElementById('nu_pass').value='';
+      document.getElementById('nu_name').value=''; toast('เพิ่มผู้ใช้แล้ว ✓'); loadUserList(); }
+    else err.textContent=r.error||'เพิ่มไม่สำเร็จ';
+  }catch(e){ err.textContent='เชื่อมต่อไม่ได้'; }
+}
+async function delUser(name){
+  if(!(await confirmBox('ลบผู้ใช้ "'+name+'" ?','ลบ'))) return;
+  try{
+    const r=await api({action:'deleteUser',username:currentUser,token:currentToken,target:name});
+    if(!handle(r)) return;
+    if(r.ok){ toast('ลบแล้ว'); loadUserList(); } else toast(r.error||'ลบไม่สำเร็จ');
+  }catch(e){}
+}
+
+// ---------- เริ่มทำงาน ----------
+async function init(){
+  render();
+  if(OFFLINE){
+    document.querySelectorAll('.online-only').forEach(el=>el.style.display='none');
+    setWeek(); return;
+  }
+  setWeek();
+  document.getElementById('lp').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+  document.getElementById('lu').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('lp').focus(); });
+  const s=loadSession();
+  if(s && s.user && s.token){
+    currentUser=s.user; currentToken=s.token; currentRole=s.role||'user'; currentName=s.name||s.user;
+    try{
+      const r=await api({action:'ping',username:currentUser,token:currentToken});
+      if(r.ok){ currentRole=r.role||currentRole; currentName=r.displayName||currentName; enterApp(); return; }
+    }catch(e){}
+    clearSession();
+  }
+  showLogin('');
+}
+
+async function downloadPNG(){
+  document.activeElement && document.activeElement.blur();
+  if(!OFFLINE && currentUser){ await autoSave(); }
+  await (document.fonts ? document.fonts.ready : Promise.resolve());
+  document.body.classList.add('exporting');
+  try{
+    const canvas=await html2canvas(poster,{scale:2,useCORS:true,backgroundColor:'#fbf7f0',logging:false});
+    const link=document.createElement('a'); link.download='รายงานรายสัปดาห์.png'; link.href=canvas.toDataURL('image/png'); link.click();
+    if(!OFFLINE && currentUser) toast('ดาวน์โหลด + บันทึกเป็นรายการใหม่ ✓');
+  }catch(err){ alert('เกิดข้อผิดพลาดในการสร้างรูป: '+err.message); }
+  finally{ document.body.classList.remove('exporting'); }
+}
+
+init();
+</script>
+</body>
+</html>
