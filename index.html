@@ -281,12 +281,12 @@
  *   - Project API keys: anon public → SUPABASE_ANON_KEY
  * ถ้ายังไม่ตั้ง (เป็น PASTE...) จะเป็นโหมดออฟไลน์ (แก้+โหลด PNG ได้ ไม่มีล็อกอิน)
  *************************************************************/
-const SUPABASE_URL = "https://qikjpjydfeujzkazzlcp.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://qikjpjydfeujzkazzlcp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_SVcBLjI090nDFFo-dnMSyw_3o5RX06K";
 
 const OFFLINE = !SUPABASE_URL || SUPABASE_URL.indexOf("PASTE") >= 0;
 const SESSION_KEY = "wr_session_v1";
-const supa = OFFLINE ? null : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supa = OFFLINE ? null : supabase.createClient(SUPABASE_URL.trim().replace(/\/+$/,''), SUPABASE_ANON_KEY.trim());
 let currentUser=null, currentToken=null, currentRole="user", currentName="", dirty=false, pingTimer=null, pingFails=0;
 
 const PALETTE = [
