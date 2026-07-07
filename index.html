@@ -457,6 +457,16 @@ async function saveWeek(){
   }catch(e){ toast('บันทึกไม่สำเร็จ ตรวจการเชื่อมต่อ'); }
   finally{ btn.textContent=old; }
 }
+// บันทึกเงียบๆ (ใช้ตอนกดโหลด PNG)
+async function autoSave(){
+  if(OFFLINE || !currentUser) return true;
+  try{
+    const r=await api({action:'save',username:currentUser,token:currentToken,weekKey:weekKey(),rangeLabel:fmtRange(),data:collectState()});
+    if(!handle(r)) return false;
+    if(r.ok){ dirty=false; await loadWeeks(); syncHistory(); return true; }
+  }catch(e){}
+  return false;
+}
 async function loadWeek(){
   if(OFFLINE){ render(); setWeek(); return; }
   render(); setWeek();
@@ -549,11 +559,13 @@ async function init(){
 
 async function downloadPNG(){
   document.activeElement && document.activeElement.blur();
+  if(!OFFLINE && currentUser){ await autoSave(); }   // เซฟอัตโนมัติก่อนโหลดรูป
   await (document.fonts ? document.fonts.ready : Promise.resolve());
   document.body.classList.add('exporting');
   try{
     const canvas=await html2canvas(poster,{scale:2,useCORS:true,backgroundColor:'#fbf7f0',logging:false});
     const link=document.createElement('a'); link.download='รายงานรายสัปดาห์.png'; link.href=canvas.toDataURL('image/png'); link.click();
+    if(!OFFLINE && currentUser) toast('บันทึกและดาวน์โหลดแล้ว ✓');
   }catch(err){ alert('เกิดข้อผิดพลาดในการสร้างรูป: '+err.message); }
   finally{ document.body.classList.remove('exporting'); }
 }
