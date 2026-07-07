@@ -47,31 +47,6 @@
     background:none;padding:11px 12px;border-radius:9px;cursor:pointer;color:#1a2233;white-space:nowrap;display:flex;gap:8px;align-items:center}
   .ddmenu button:hover{background:#eef1f6}
 
-  /* แถบตั้งค่าด้านขวา */
-  .settings{position:fixed;top:0;right:0;bottom:0;width:320px;max-width:88vw;z-index:230;background:#fff;
-    box-shadow:-14px 0 40px rgba(10,15,25,.18);transform:translateX(100%);transition:transform .25s ease;
-    display:flex;flex-direction:column}
-  .settings.show{transform:translateX(0)}
-  .settings{color:#1a2233}
-  .sethead{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid var(--line)}
-  .sethead .st{font-family:'Prompt',sans-serif;font-weight:800;font-size:17px;display:flex;align-items:center;gap:9px}
-  .setbody{padding:18px 20px;overflow:auto;display:flex;flex-direction:column;gap:20px}
-  .setrow{display:flex;flex-direction:column;gap:9px}
-  .setrow .sl{font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;color:#1a2233}
-  .setgroup{font-family:'Prompt',sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;color:#8794a8;
-    text-transform:uppercase;margin-top:6px}
-  .setgroup:first-child{margin-top:0}
-  .swatches{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .sw{width:30px;height:30px;border-radius:9px;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--line);cursor:pointer;padding:0}
-  .sw.sel{box-shadow:0 0 0 2.5px var(--accent)}
-  .sw.pick{background:conic-gradient(#f44,#fa0,#4c4,#08f,#a4f,#f44);position:relative;overflow:hidden}
-  .sw.pick input{position:absolute;inset:0;opacity:0;cursor:pointer}
-  .setrange{display:flex;align-items:center;gap:12px}
-  .setrange input[type=range]{flex:1;accent-color:var(--accent)}
-  .setrange .val{font-family:'Prompt',sans-serif;font-weight:700;font-size:14px;min-width:44px;text-align:right}
-  .setfoot{margin-top:auto;padding:16px 20px;border-top:1.5px solid var(--line)}
-  .backdrop{position:fixed;inset:0;z-index:225;background:rgba(17,24,38,.35);display:none}
-  .backdrop.show{display:block}
   .wkpick,.hist{font-family:'Prompt',sans-serif;font-weight:600;font-size:13px;border:none;border-radius:10px;
     padding:8px 10px;background:#232c3d;color:#e7ecf5;cursor:pointer;max-width:210px}
   .wkpick::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.7;cursor:pointer}
@@ -252,7 +227,6 @@
     </div>
   </span>
   <button class="btn btn-ghost online-only" id="adminBtn" onclick="openUsers()" style="display:none"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> จัดการผู้ใช้</button>
-  <button class="btn btn-ghost" onclick="openSettings()" title="ตั้งค่าหน้าตา"><svg class="ic-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> ตั้งค่า</button>
   <button class="btn btn-ghost online-only" id="logoutBtn" onclick="logout()"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> ออกจากระบบ</button>
 </div>
 
@@ -318,19 +292,6 @@
       <button class="btn btn-light" onclick="confirmResolve(false)">ยกเลิก</button>
       <button class="btn btn-danger" id="confirmok" onclick="confirmResolve(true)">ลบ</button>
     </div>
-  </div>
-</div>
-
-<!-- ===== แถบตั้งค่าหน้าตา (ด้านขวา) ===== -->
-<div class="backdrop" id="setBackdrop" onclick="closeSettings()"></div>
-<div class="settings" id="settings">
-  <div class="sethead">
-    <span class="st"><svg class="ic-svg" viewBox="0 0 24 24" style="width:19px;height:19px"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6 6 4.5 4.5M19.5 19.5 18 18M18 6l1.5-1.5M4.5 19.5 6 18"/></svg> ตั้งค่าหน้าตา</span>
-    <button class="mclose" onclick="closeSettings()"><svg class="ic-svg" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-  </div>
-  <div class="setbody" id="setbody"></div>
-  <div class="setfoot">
-    <button class="btn btn-light" style="width:100%;justify-content:center" onclick="resetStyle()">คืนค่าเริ่มต้น</button>
   </div>
 </div>
 
@@ -744,58 +705,6 @@ async function pngAction(mode){   // 'both' | 'save' | 'png'
   finally{ document.body.classList.remove('exporting'); }
 }
 
-// ---------- แถบตั้งค่าหน้าตา (ปรับได้ละเอียด) ----------
-const STYLE_KEY='wr_style_v1';
-const STYLE_DEFAULT={
-  '--body-text':'#37414f','--ink':'#1a2233','--accent':'#8a5cf6','--eyebrow':'#ff5a5f','--muted':'#5a6478','--paper':'#fbf7f0',
-  '--h1size':'44px','--eyebrow-size':'15px','--title-size':'20px','--body-size':'13.5px'
-};
-const COLOR_ROWS=[
-  {k:'--body-text', label:'สีข้อความรายการงาน', sw:['#37414f','#1a2233','#0f172a','#334155','#475569']},
-  {k:'--ink',       label:'สีหัวข้อใหญ่ / วันที่', sw:['#1a2233','#0f172a','#374151','#5a6478','#111827']},
-  {k:'--accent',    label:'สีคำเน้น (accent)', sw:['#8a5cf6','#2f8bff','#12b3a6','#ff8a3d','#31c26b','#f4419b']},
-  {k:'--eyebrow',   label:'สีป้ายหัวข้อเล็ก', sw:['#ff5a5f','#f4419b','#8a5cf6','#2f8bff','#f5b301','#12b3a6']},
-  {k:'--muted',     label:'สีข้อความรอง / สรุป', sw:['#5a6478','#8794a8','#64748b','#94a3b8','#374151']},
-  {k:'--paper',     label:'สีพื้นหลังโปสเตอร์', sw:['#fbf7f0','#ffffff','#f5f7fb','#fff4e8','#eef4ff','#f3fbf3']}
-];
-const SIZE_ROWS=[
-  {k:'--h1size',      label:'ขนาดหัวข้อใหญ่',   min:28, max:58},
-  {k:'--eyebrow-size',label:'ขนาดป้ายหัวข้อเล็ก', min:11, max:22},
-  {k:'--title-size',  label:'ขนาดชื่อโครงการ',   min:15, max:28},
-  {k:'--body-size',   label:'ขนาดข้อความรายการ', min:11, max:18}
-];
-let style = loadStyle();
-function loadStyle(){ try{ return Object.assign({},STYLE_DEFAULT,JSON.parse(localStorage.getItem(STYLE_KEY)||'{}')); }catch(e){ return Object.assign({},STYLE_DEFAULT); } }
-function saveStyle(){ try{ localStorage.setItem(STYLE_KEY,JSON.stringify(style)); }catch(e){} }
-function applyStyle(){ for(const k in style){ document.documentElement.style.setProperty(k,style[k]); } }
-function idOf(k){ return 'v_'+k.replace(/--/g,''); }
-function buildSettings(){
-  const box=document.getElementById('setbody'); if(!box) return;
-  let html='<div class="setgroup">สี</div>';
-  COLOR_ROWS.forEach(r=>{
-    const cur=String(style[r.k]||'').toLowerCase();
-    html+=`<div class="setrow"><div class="sl">${r.label}</div><div class="swatches">`
-      + r.sw.map(c=>`<button class="sw${c.toLowerCase()===cur?' sel':''}" style="background:${c}" title="${c}" onclick="setVar('${r.k}','${c}')"></button>`).join('')
-      + `<button class="sw pick" title="เลือกสีเอง"><input type="color" value="${style[r.k]}" oninput="setVar('${r.k}',this.value)"></button>`
-      + `</div></div>`;
-  });
-  html+='<div class="setgroup">ขนาดตัวอักษร</div>';
-  SIZE_ROWS.forEach(r=>{
-    const v=parseFloat(style[r.k])||r.min;
-    html+=`<div class="setrow"><div class="sl">${r.label}</div>`
-      + `<div class="setrange"><input type="range" min="${r.min}" max="${r.max}" step="0.5" value="${v}" oninput="setSize('${r.k}',this.value)">`
-      + `<span class="val" id="${idOf(r.k)}">${v}px</span></div></div>`;
-  });
-  box.innerHTML=html;
-}
-function setVar(k,v){ style[k]=v; document.documentElement.style.setProperty(k,v); saveStyle(); buildSettings(); }
-function setSize(k,v){ const val=v+'px'; style[k]=val; document.documentElement.style.setProperty(k,val); saveStyle();
-  const el=document.getElementById(idOf(k)); if(el) el.textContent=val; }
-function openSettings(){ buildSettings(); document.getElementById('settings').classList.add('show'); document.getElementById('setBackdrop').classList.add('show'); }
-function closeSettings(){ document.getElementById('settings').classList.remove('show'); document.getElementById('setBackdrop').classList.remove('show'); }
-function resetStyle(){ style=Object.assign({},STYLE_DEFAULT); saveStyle(); applyStyle(); buildSettings(); }
-
-applyStyle();
 init();
 </script>
 </body>
