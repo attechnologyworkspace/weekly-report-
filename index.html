@@ -75,7 +75,7 @@
   .card{background:var(--card);border-radius:20px;border:1.5px solid var(--line);overflow:hidden;
     box-shadow:0 10px 30px rgba(26,34,51,.06);display:flex;flex-direction:column;position:relative}
   .card .top{padding:20px 22px 18px;color:#fff;background:linear-gradient(135deg,var(--a) 0%,var(--a2) 100%)}
-  .card .top .row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .card .top .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-right:62px}
   .card .top .title{font-family:'Prompt',sans-serif;font-weight:700;font-size:20px;line-height:1.2;flex:1}
   .card .top .code{font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;background:rgba(255,255,255,.22);padding:5px 10px;border-radius:8px;white-space:nowrap}
   .badge{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-family:'Prompt',sans-serif;font-weight:600;font-size:13px}
@@ -112,6 +112,7 @@
   .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1.5px solid var(--line);padding-top:18px}
 
   .exporting .addline,.exporting .removecard,.exporting .delline,.exporting .cardcolor{display:none !important}
+  .exporting .card .top .row{padding-right:0 !important}
   .exporting [contenteditable]{box-shadow:none !important;background:none !important}
 
   /* login */
@@ -233,7 +234,7 @@
  * วาง URL ของ Web App (Apps Script) ตรงนี้
  * ถ้ายังไม่ตั้ง จะเป็นโหมดออฟไลน์ (แก้+โหลด PNG ได้ ไม่มีล็อกอิน)
  *************************************************************/
-const API_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+const API_URL = "https://script.google.com/macros/s/AKfycbzruXBBsfDlcHQLmwP7S-yavqm-1gvUFe5036sv39yMFTP-zXotz_xTLnvZ8ma-HBNWSw/exec";
 
 const OFFLINE = !API_URL || API_URL.indexOf("PASTE") >= 0;
 const SESSION_KEY = "wr_session_v1";
