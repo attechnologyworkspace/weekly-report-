@@ -191,8 +191,7 @@
   </span>
   <button class="btn btn-ghost online-only" id="histBtn" onclick="openHistory()" title="ดูรายงานย้อนหลัง">📚 ดูย้อนหลัง</button>
   <button class="btn btn-ghost" onclick="addProject()">＋ เพิ่มโครงการ</button>
-  <button class="btn btn-blue online-only" id="saveBtn" onclick="saveWeek()">💾 บันทึกสัปดาห์</button>
-  <button class="btn btn-primary" onclick="downloadPNG()">⬇ PNG</button>
+  <button class="btn btn-primary" onclick="downloadPNG()">⬇ PNG (บันทึก+โหลด)</button>
   <button class="btn btn-ghost online-only" id="adminBtn" onclick="openUsers()" style="display:none">👥 จัดการผู้ใช้</button>
   <button class="btn btn-ghost online-only" id="logoutBtn" onclick="logout()">ออกจากระบบ</button>
 </div>
@@ -486,18 +485,7 @@ function startPing(){ stopPing(); pingFails=0; pingTimer=setInterval(async()=>{
 function stopPing(){ if(pingTimer){ clearInterval(pingTimer); pingTimer=null; } }
 
 // ---------- รายงาน ----------
-async function saveWeek(){
-  if(OFFLINE)return;
-  const btn=document.getElementById('saveBtn'); const old=btn.textContent; btn.textContent='กำลังบันทึก...';
-  try{
-    const r=await api({action:'save',username:currentUser,token:currentToken,weekKey:weekKey(),rangeLabel:fmtRange(),data:collectState()});
-    if(!handle(r)) return;
-    if(r.ok){ dirty=false; toast('บันทึกแล้ว ✓'); }
-    else toast('ผิดพลาด: '+(r.error||''));
-  }catch(e){ toast('บันทึกไม่สำเร็จ ตรวจการเชื่อมต่อ'); }
-  finally{ btn.textContent=old; }
-}
-// บันทึกเงียบๆ (ใช้ตอนกดโหลด PNG)
+// บันทึกเป็นรายการใหม่ (ใช้ตอนกดโหลด PNG)
 async function autoSave(){
   if(OFFLINE || !currentUser) return true;
   try{
@@ -533,12 +521,23 @@ async function renderHistory(){
       <div class="urow">
         <span class="un">${esc(w.rangeLabel||w.weekKey||'(ไม่มีชื่อ)')}</span>
         <span class="um">${esc(fmtSaved(w.updatedAt))}</span>
-        <button class="btn btn-blue btn-sm" onclick="openHist('${esc(w.weekKey)}')">เปิด</button>
+        <button class="btn btn-blue btn-sm" onclick="openHist(${w.row},'${esc(w.weekKey)}')">เปิด</button>
         <button class="udel" onclick="delHist(${w.row})">ลบ</button>
       </div>`).join('');
   }catch(e){ box.innerHTML='<div class="um">โหลดไม่สำเร็จ</div>'; }
 }
-async function openHist(k){ if(!(await leaveOk()))return; const d=new Date(k+'T00:00:00'); weekBase=isNaN(d)?new Date():d; closeHistory(); loadWeek(); }
+async function openHist(row, k){
+  if(!(await leaveOk()))return;
+  closeHistory();
+  const d=new Date(k+'T00:00:00'); weekBase=isNaN(d)?new Date():d;
+  render(); setWeek();
+  try{
+    const r=await api({action:'loadRow',username:currentUser,token:currentToken,row:row});
+    if(!handle(r)) return;
+    if(r.ok && r.data) applyState(r.data);
+  }catch(e){ toast('เปิดไม่สำเร็จ'); }
+  dirty=false; setWeek();
+}
 async function delHist(row){
   if(!(await confirmBox('ลบรายงานสัปดาห์นี้ออกจากประวัติ?','ลบ'))) return;
   try{
@@ -621,7 +620,7 @@ async function downloadPNG(){
   try{
     const canvas=await html2canvas(poster,{scale:2,useCORS:true,backgroundColor:'#fbf7f0',logging:false});
     const link=document.createElement('a'); link.download='รายงานรายสัปดาห์.png'; link.href=canvas.toDataURL('image/png'); link.click();
-    if(!OFFLINE && currentUser) toast('บันทึกและดาวน์โหลดแล้ว ✓');
+    if(!OFFLINE && currentUser) toast('ดาวน์โหลด + บันทึกเป็นรายการใหม่ ✓');
   }catch(err){ alert('เกิดข้อผิดพลาดในการสร้างรูป: '+err.message); }
   finally{ document.body.classList.remove('exporting'); }
 }
