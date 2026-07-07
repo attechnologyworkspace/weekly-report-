@@ -191,6 +191,7 @@
   </span>
   <button class="btn btn-ghost online-only" id="histBtn" onclick="openHistory()" title="ดูรายงานย้อนหลัง">📚 ดูย้อนหลัง</button>
   <button class="btn btn-ghost" onclick="addProject()">＋ เพิ่มโครงการ</button>
+  <button class="btn btn-ghost" onclick="resetDefault()" title="ล้างเป็นฟอร์มเริ่มต้น">↺ ค่าเริ่มต้น</button>
   <button class="btn btn-primary" onclick="downloadPNG()">⬇ PNG (บันทึก+โหลด)</button>
   <button class="btn btn-ghost online-only" id="adminBtn" onclick="openUsers()" style="display:none">👥 จัดการผู้ใช้</button>
   <button class="btn btn-ghost online-only" id="logoutBtn" onclick="logout()">ออกจากระบบ</button>
@@ -337,6 +338,10 @@ function addProject(){
   const p={title:"โครงการใหม่",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:0,done:["รายการใหม่"],next:["รายการใหม่"]};
   grid.insertAdjacentHTML('beforeend', cardHTML(p)); refresh(); markDirty();
   grid.lastElementChild.scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function resetDefault(){
+  if(!(await confirmBox('ล้างหน้านี้เป็นฟอร์มเริ่มต้น? สิ่งที่ยังไม่ได้กด PNG จะหาย','ล้าง'))) return;
+  render(); setWeek(); dirty=false;
 }
 function refreshColors(){
   [...grid.children].forEach((card,i)=>{
@@ -497,11 +502,11 @@ async function autoSave(){
 }
 async function loadWeek(){
   if(OFFLINE){ render(); setWeek(); return; }
-  render(); setWeek();
+  setWeek();
   try{
     const r=await api({action:'load',username:currentUser,token:currentToken,weekKey:weekKey()});
     if(!handle(r)) return;
-    if(r.ok && r.data) applyState(r.data);
+    if(r.ok && r.data) applyState(r.data); else render();   // มีข้อมูล→แสดง / ไม่มี→ฟอร์มเริ่มต้น
   }catch(e){ toast('โหลดข้อมูลไม่สำเร็จ'); }
   dirty=false; setWeek();
 }
@@ -530,11 +535,11 @@ async function openHist(row, k){
   if(!(await leaveOk()))return;
   closeHistory();
   const d=new Date(k+'T00:00:00'); weekBase=isNaN(d)?new Date():d;
-  render(); setWeek();
+  setWeek();
   try{
     const r=await api({action:'loadRow',username:currentUser,token:currentToken,row:row});
     if(!handle(r)) return;
-    if(r.ok && r.data) applyState(r.data);
+    if(r.ok && r.data) applyState(r.data); else render();
   }catch(e){ toast('เปิดไม่สำเร็จ'); }
   dirty=false; setWeek();
 }
