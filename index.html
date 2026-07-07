@@ -11,10 +11,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{ --ink:#1a2233; --muted:#5a6478; --paper:#fbf7f0; --card:#fff; --line:#eae3d8;
-    --accent:#8a5cf6; --eyebrow:#ff5a5f; --h1size:44px; }
+    --accent:#8a5cf6; --eyebrow:#ff5a5f; --body-text:#37414f;
+    --h1size:44px; --eyebrow-size:15px; --title-size:20px; --body-size:13.5px; }
   *{margin:0;padding:0;box-sizing:border-box}
   .ic-svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;flex-shrink:0}
-  body{font-family:'Sarabun',sans-serif;background:linear-gradient(180deg,#eef1f6 0%,#e6ebf4 100%);min-height:100vh;color:var(--ink);-webkit-font-smoothing:antialiased}
+  body{font-family:'Sarabun',sans-serif;background:linear-gradient(180deg,#eef1f6 0%,#e6ebf4 100%);min-height:100vh;color:#1a2233;-webkit-font-smoothing:antialiased}
 
   .toolbar{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#151d2e 0%,#0e1420 100%);color:#fff;
     padding:13px 22px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -51,11 +52,15 @@
     box-shadow:-14px 0 40px rgba(10,15,25,.18);transform:translateX(100%);transition:transform .25s ease;
     display:flex;flex-direction:column}
   .settings.show{transform:translateX(0)}
+  .settings{color:#1a2233}
   .sethead{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid var(--line)}
   .sethead .st{font-family:'Prompt',sans-serif;font-weight:800;font-size:17px;display:flex;align-items:center;gap:9px}
   .setbody{padding:18px 20px;overflow:auto;display:flex;flex-direction:column;gap:20px}
   .setrow{display:flex;flex-direction:column;gap:9px}
-  .setrow .sl{font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;color:var(--ink)}
+  .setrow .sl{font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;color:#1a2233}
+  .setgroup{font-family:'Prompt',sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;color:#8794a8;
+    text-transform:uppercase;margin-top:6px}
+  .setgroup:first-child{margin-top:0}
   .swatches{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .sw{width:30px;height:30px;border-radius:9px;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--line);cursor:pointer;padding:0}
   .sw.sel{box-shadow:0 0 0 2.5px var(--accent)}
@@ -90,10 +95,10 @@
   .top [contenteditable]:focus{box-shadow:0 0 0 2px #fff;background:rgba(255,255,255,.16)}
 
   .head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:38px}
-  .eyebrow{font-family:'Prompt',sans-serif;font-weight:600;font-size:15px;letter-spacing:.14em;color:var(--eyebrow);
+  .eyebrow{font-family:'Prompt',sans-serif;font-weight:600;font-size:var(--eyebrow-size);letter-spacing:.14em;color:var(--eyebrow);
     display:inline-flex;align-items:center;gap:10px;margin-bottom:12px}
   .eyebrow::before{content:"";width:26px;height:3px;border-radius:3px;background:var(--eyebrow)}
-  h1{font-family:'Prompt',sans-serif;font-weight:800;font-size:var(--h1size);line-height:1.12;letter-spacing:-.01em}
+  h1{font-family:'Prompt',sans-serif;font-weight:800;font-size:var(--h1size);line-height:1.12;letter-spacing:-.01em;color:var(--ink)}
   h1 .accent{color:var(--accent)}
   .daterange{text-align:right;flex-shrink:0}
   .daterange .lbl{font-size:14px;color:var(--muted);font-weight:500;margin-bottom:4px}
@@ -112,7 +117,7 @@
     box-shadow:0 10px 30px rgba(26,34,51,.06);display:flex;flex-direction:column;position:relative}
   .card .top{padding:20px 22px 18px;color:#fff;background:linear-gradient(135deg,var(--a) 0%,var(--a2) 100%)}
   .card .top .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-right:62px}
-  .card .top .title{font-family:'Prompt',sans-serif;font-weight:700;font-size:20px;line-height:1.2;flex:1}
+  .card .top .title{font-family:'Prompt',sans-serif;font-weight:700;font-size:var(--title-size);line-height:1.2;flex:1}
   .card .top .code{font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;background:rgba(255,255,255,.22);padding:5px 10px;border-radius:8px;white-space:nowrap}
   .badge{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-family:'Prompt',sans-serif;font-weight:600;font-size:13px}
   .badge .pctwrap{font-weight:800;font-size:15px}
@@ -124,7 +129,7 @@
   .col h4 .ic{width:9px;height:9px;border-radius:3px;background:var(--a)}
   .col.next h4 .ic{background:var(--muted);opacity:.5}
   ul{list-style:none;display:flex;flex-direction:column;gap:7px}
-  li{font-size:13.5px;line-height:1.42;color:#37414f;padding-left:16px;padding-right:22px;position:relative}
+  li{font-size:var(--body-size);line-height:1.42;color:var(--body-text);padding-left:16px;padding-right:22px;position:relative}
   li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--a)}
   li .txt{display:inline;outline:none}
   .col.next li{color:var(--muted)}
@@ -167,7 +172,7 @@
   .modal{position:fixed;inset:0;z-index:210;background:rgba(17,24,38,.55);display:none;align-items:center;justify-content:center;padding:20px}
   .modalcard{width:520px;max-width:100%;max-height:88vh;overflow:auto;background:#fff;border-radius:20px;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
   .modalhead{font-family:'Prompt',sans-serif;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .mclose{border:none;background:#eef1f6;width:32px;height:32px;border-radius:10px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+  .mclose{border:none;background:#eef1f6;width:32px;height:32px;border-radius:10px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#1a2233}
   .uform{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
   .uform .lin{margin-bottom:0}
   .uform .full{grid-column:1/-1}
@@ -323,15 +328,7 @@
     <span class="st"><svg class="ic-svg" viewBox="0 0 24 24" style="width:19px;height:19px"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6 6 4.5 4.5M19.5 19.5 18 18M18 6l1.5-1.5M4.5 19.5 6 18"/></svg> ตั้งค่าหน้าตา</span>
     <button class="mclose" onclick="closeSettings()"><svg class="ic-svg" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
   </div>
-  <div class="setbody">
-    <div class="setrow"><div class="sl">สีตัวอักษร / หัวข้อ</div><div class="swatches" id="sw_ink"></div></div>
-    <div class="setrow"><div class="sl">สีหัวข้อเน้น (accent)</div><div class="swatches" id="sw_accent"></div></div>
-    <div class="setrow"><div class="sl">สีป้ายหัวข้อเล็ก</div><div class="swatches" id="sw_eyebrow"></div></div>
-    <div class="setrow"><div class="sl">สีพื้นหลังโปสเตอร์</div><div class="swatches" id="sw_paper"></div></div>
-    <div class="setrow"><div class="sl">ขนาดหัวข้อใหญ่</div>
-      <div class="setrange"><input type="range" min="30" max="56" id="rg_h1" oninput="setH1(this.value)"><span class="val" id="rg_h1v"></span></div>
-    </div>
-  </div>
+  <div class="setbody" id="setbody"></div>
   <div class="setfoot">
     <button class="btn btn-light" style="width:100%;justify-content:center" onclick="resetStyle()">คืนค่าเริ่มต้น</button>
   </div>
@@ -747,39 +744,56 @@ async function pngAction(mode){   // 'both' | 'save' | 'png'
   finally{ document.body.classList.remove('exporting'); }
 }
 
-// ---------- แถบตั้งค่าหน้าตา ----------
+// ---------- แถบตั้งค่าหน้าตา (ปรับได้ละเอียด) ----------
 const STYLE_KEY='wr_style_v1';
-const STYLE_DEFAULT={'--ink':'#1a2233','--accent':'#8a5cf6','--eyebrow':'#ff5a5f','--paper':'#fbf7f0','--h1size':'44px'};
-const SWATCHES={
-  '--ink':['#1a2233','#0f172a','#374151','#5a6478','#111827'],
-  '--accent':['#8a5cf6','#2f8bff','#12b3a6','#ff8a3d','#31c26b','#f4419b'],
-  '--eyebrow':['#ff5a5f','#f4419b','#8a5cf6','#2f8bff','#f5b301','#12b3a6'],
-  '--paper':['#fbf7f0','#ffffff','#f5f7fb','#fff4e8','#eef4ff','#f3fbf3']
+const STYLE_DEFAULT={
+  '--body-text':'#37414f','--ink':'#1a2233','--accent':'#8a5cf6','--eyebrow':'#ff5a5f','--muted':'#5a6478','--paper':'#fbf7f0',
+  '--h1size':'44px','--eyebrow-size':'15px','--title-size':'20px','--body-size':'13.5px'
 };
+const COLOR_ROWS=[
+  {k:'--body-text', label:'สีข้อความรายการงาน', sw:['#37414f','#1a2233','#0f172a','#334155','#475569']},
+  {k:'--ink',       label:'สีหัวข้อใหญ่ / วันที่', sw:['#1a2233','#0f172a','#374151','#5a6478','#111827']},
+  {k:'--accent',    label:'สีคำเน้น (accent)', sw:['#8a5cf6','#2f8bff','#12b3a6','#ff8a3d','#31c26b','#f4419b']},
+  {k:'--eyebrow',   label:'สีป้ายหัวข้อเล็ก', sw:['#ff5a5f','#f4419b','#8a5cf6','#2f8bff','#f5b301','#12b3a6']},
+  {k:'--muted',     label:'สีข้อความรอง / สรุป', sw:['#5a6478','#8794a8','#64748b','#94a3b8','#374151']},
+  {k:'--paper',     label:'สีพื้นหลังโปสเตอร์', sw:['#fbf7f0','#ffffff','#f5f7fb','#fff4e8','#eef4ff','#f3fbf3']}
+];
+const SIZE_ROWS=[
+  {k:'--h1size',      label:'ขนาดหัวข้อใหญ่',   min:28, max:58},
+  {k:'--eyebrow-size',label:'ขนาดป้ายหัวข้อเล็ก', min:11, max:22},
+  {k:'--title-size',  label:'ขนาดชื่อโครงการ',   min:15, max:28},
+  {k:'--body-size',   label:'ขนาดข้อความรายการ', min:11, max:18}
+];
 let style = loadStyle();
 function loadStyle(){ try{ return Object.assign({},STYLE_DEFAULT,JSON.parse(localStorage.getItem(STYLE_KEY)||'{}')); }catch(e){ return Object.assign({},STYLE_DEFAULT); } }
 function saveStyle(){ try{ localStorage.setItem(STYLE_KEY,JSON.stringify(style)); }catch(e){} }
 function applyStyle(){ for(const k in style){ document.documentElement.style.setProperty(k,style[k]); } }
-function setVar(k,v){ style[k]=v; document.documentElement.style.setProperty(k,v); saveStyle(); buildSwatches(); }
-function setH1(v){ setVar('--h1size', v+'px'); const el=document.getElementById('rg_h1v'); if(el) el.textContent=v+'px'; }
-function buildSwatches(){
-  for(const k in SWATCHES){
-    const box=document.getElementById('sw_'+k.replace('--',''));
-    if(!box) continue;
-    const cur=String(style[k]||'').toLowerCase();
-    box.innerHTML = SWATCHES[k].map(c=>`<button class="sw${c.toLowerCase()===cur?' sel':''}" style="background:${c}" title="${c}" onclick="setVar('${k}','${c}')"></button>`).join('')
-      + `<button class="sw pick" title="เลือกสีเอง"><input type="color" value="${style[k]}" oninput="setVar('${k}',this.value)"></button>`;
-  }
+function idOf(k){ return 'v_'+k.replace(/--/g,''); }
+function buildSettings(){
+  const box=document.getElementById('setbody'); if(!box) return;
+  let html='<div class="setgroup">สี</div>';
+  COLOR_ROWS.forEach(r=>{
+    const cur=String(style[r.k]||'').toLowerCase();
+    html+=`<div class="setrow"><div class="sl">${r.label}</div><div class="swatches">`
+      + r.sw.map(c=>`<button class="sw${c.toLowerCase()===cur?' sel':''}" style="background:${c}" title="${c}" onclick="setVar('${r.k}','${c}')"></button>`).join('')
+      + `<button class="sw pick" title="เลือกสีเอง"><input type="color" value="${style[r.k]}" oninput="setVar('${r.k}',this.value)"></button>`
+      + `</div></div>`;
+  });
+  html+='<div class="setgroup">ขนาดตัวอักษร</div>';
+  SIZE_ROWS.forEach(r=>{
+    const v=parseFloat(style[r.k])||r.min;
+    html+=`<div class="setrow"><div class="sl">${r.label}</div>`
+      + `<div class="setrange"><input type="range" min="${r.min}" max="${r.max}" step="0.5" value="${v}" oninput="setSize('${r.k}',this.value)">`
+      + `<span class="val" id="${idOf(r.k)}">${v}px</span></div></div>`;
+  });
+  box.innerHTML=html;
 }
-function openSettings(){ document.getElementById('settings').classList.add('show'); document.getElementById('setBackdrop').classList.add('show'); syncSettings(); }
+function setVar(k,v){ style[k]=v; document.documentElement.style.setProperty(k,v); saveStyle(); buildSettings(); }
+function setSize(k,v){ const val=v+'px'; style[k]=val; document.documentElement.style.setProperty(k,val); saveStyle();
+  const el=document.getElementById(idOf(k)); if(el) el.textContent=val; }
+function openSettings(){ buildSettings(); document.getElementById('settings').classList.add('show'); document.getElementById('setBackdrop').classList.add('show'); }
 function closeSettings(){ document.getElementById('settings').classList.remove('show'); document.getElementById('setBackdrop').classList.remove('show'); }
-function syncSettings(){
-  buildSwatches();
-  const h1=parseInt(style['--h1size'])||44;
-  const rg=document.getElementById('rg_h1'); if(rg) rg.value=h1;
-  const v=document.getElementById('rg_h1v'); if(v) v.textContent=h1+'px';
-}
-function resetStyle(){ style=Object.assign({},STYLE_DEFAULT); saveStyle(); applyStyle(); syncSettings(); }
+function resetStyle(){ style=Object.assign({},STYLE_DEFAULT); saveStyle(); applyStyle(); buildSettings(); }
 
 applyStyle();
 init();
