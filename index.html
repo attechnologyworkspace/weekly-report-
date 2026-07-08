@@ -601,13 +601,13 @@ async function doLogin(){
 }
 async function logout(){ if(!OFFLINE && !(await leaveOk())) return; forceLogout(''); }
 
-function startPing(){ stopPing(); pingFails=0; pingTimer=setInterval(async()=>{
+function startPing(){ stopPing(); pingTimer=setInterval(async()=>{
   try{
     const r=await api({action:'ping',username:currentUser,token:currentToken});
-    if(r && r.ok){ pingFails=0; currentRole=r.role||currentRole;
+    if(r && r.ok){ currentRole=r.role||currentRole;
       document.getElementById('adminBtn').style.display=(currentRole==='admin')?'':'none'; }
-    else if(r && r.error==='session'){ if(++pingFails>=2) forceLogout('บัญชีนี้ถูกเข้าใช้งานจากที่อื่น จึงออกจากระบบ'); }
-  }catch(e){} }, 25000); }
+    else if(r && r.error==='session'){ forceLogout('เซสชันหมดอายุ หรือรหัสผ่านถูกรีเซ็ต กรุณาเข้าสู่ระบบใหม่'); }
+  }catch(e){} }, 15000); }
 function stopPing(){ if(pingTimer){ clearInterval(pingTimer); pingTimer=null; } }
 
 // ---------- รายงาน ----------
