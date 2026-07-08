@@ -132,16 +132,29 @@
   .exporting [contenteditable]{box-shadow:none !important;background:none !important}
 
   /* login */
-  .loginwrap{position:fixed;inset:0;z-index:200;background:linear-gradient(135deg,#111826,#1b2740);
-    display:none;align-items:center;justify-content:center;padding:20px}
-  .logincard{width:360px;max-width:100%;background:#fff;border-radius:20px;padding:34px 30px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
-  .loginbrand{font-family:'Prompt',sans-serif;font-weight:800;font-size:23px;display:flex;align-items:center;gap:10px}
-  .loginbrand .dot{width:13px;height:13px;border-radius:5px;background:#31c26b}
-  .loginsub{color:var(--muted);font-size:14px;margin:6px 0 22px}
-  .lin{width:100%;font-family:'Sarabun',sans-serif;font-size:15px;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:12px;outline:none;transition:border-color .12s}
-  .lin:focus{border-color:#2f8bff}
-  .lbtn{width:100%;justify-content:center;font-size:15px;padding:13px;margin-top:4px}
-  .lerr{color:#e0362f;font-size:13px;min-height:18px;margin-bottom:4px;font-weight:600}
+  .loginwrap{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;
+    background:radial-gradient(900px 520px at 14% 8%, rgba(138,92,246,.38), transparent 60%),
+              radial-gradient(820px 520px at 88% 92%, rgba(49,194,107,.28), transparent 55%),
+              linear-gradient(135deg,#0f1626 0%,#1a2740 100%)}
+  .logincard{width:392px;max-width:100%;background:#fff;border-radius:24px;padding:38px 34px 32px;
+    box-shadow:0 34px 90px rgba(0,0,0,.42);position:relative;overflow:hidden}
+  .logincard::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#8a5cf6,#2f8bff,#31c26b)}
+  .loginlogo{width:62px;height:62px;border-radius:19px;margin:6px auto 16px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#8a5cf6,#6d3ff0);box-shadow:0 12px 26px rgba(138,92,246,.42)}
+  .loginlogo svg{width:31px;height:31px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .loginbrand{font-family:'Prompt',sans-serif;font-weight:800;font-size:22px;text-align:center;color:#1a2233}
+  .loginsub{color:var(--muted);font-size:14px;text-align:center;margin:6px 0 24px}
+  .field{position:relative;margin-bottom:13px}
+  .field .fic{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;
+    stroke:#9aa4b6;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+  .field .lin{margin-bottom:0;padding-left:42px}
+  .lin{width:100%;font-family:'Sarabun',sans-serif;font-size:15px;border:1.5px solid var(--line);border-radius:12px;
+    padding:13px 14px;margin-bottom:12px;outline:none;background:#fbfbfd;transition:border-color .12s,box-shadow .12s,background .12s}
+  .lin:focus{border-color:#8a5cf6;box-shadow:0 0 0 3px rgba(138,92,246,.15);background:#fff}
+  .lbtn{width:100%;justify-content:center;font-size:15px;padding:14px;margin-top:8px;
+    background:linear-gradient(135deg,#8a5cf6,#6d3ff0);color:#fff}
+  .lbtn:hover{filter:brightness(1.07)}
+  .lerr{color:#e0362f;font-size:13px;min-height:18px;margin:2px 0 2px;font-weight:600;text-align:center}
 
   /* modal จัดการผู้ใช้ */
   .modal{position:fixed;inset:0;z-index:210;background:rgba(17,24,38,.55);display:none;align-items:center;justify-content:center;padding:20px}
@@ -189,12 +202,19 @@
 <!-- ===== หน้าล็อกอิน ===== -->
 <div class="loginwrap" id="loginwrap">
   <div class="logincard">
-    <div class="loginbrand"><span class="dot"></span>รายงานประจำสัปดาห์</div>
+    <div class="loginlogo"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg></div>
+    <div class="loginbrand">รายงานประจำสัปดาห์</div>
     <div class="loginsub">เข้าสู่ระบบเพื่อจัดการรายงานของคุณ</div>
-    <input id="lu" class="lin" placeholder="ชื่อผู้ใช้" autocomplete="username">
-    <input id="lp" class="lin" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+    <div class="field">
+      <svg class="fic" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input id="lu" class="lin" placeholder="ชื่อผู้ใช้" autocomplete="username">
+    </div>
+    <div class="field">
+      <svg class="fic" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <input id="lp" class="lin" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+    </div>
     <div class="lerr" id="lerr"></div>
-    <button class="btn btn-primary lbtn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <button class="btn lbtn" onclick="doLogin()">เข้าสู่ระบบ</button>
   </div>
 </div>
 
