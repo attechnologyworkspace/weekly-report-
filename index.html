@@ -183,6 +183,7 @@
   .adminsection{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 10px 30px rgba(26,34,51,.05)}
   .secttitle{font-family:'Prompt',sans-serif;font-weight:700;font-size:16px;margin-bottom:14px}
 
+  #pwmodal{z-index:240}
   #confirmmodal{z-index:260}
   .confirmcard{width:360px;max-width:100%;background:#fff;border-radius:18px;padding:24px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
   .confirmmsg{font-family:'Prompt',sans-serif;font-weight:600;font-size:16px;margin-bottom:18px;line-height:1.45}
@@ -344,7 +345,24 @@ const SUPABASE_ANON_KEY = "sb_publishable_SVcBLjI090nDFFo-dnMSyw_3o5RX06K";
 
 const OFFLINE = !SUPABASE_URL || SUPABASE_URL.indexOf("PASTE") >= 0;
 const SESSION_KEY = "wr_session_v1";
-const supa = OFFLINE ? null : supabase.createClient(SUPABASE_URL.trim().replace(/\/+$/,''), SUPABASE_ANON_KEY.trim());
+let supa = null;
+function ensureClient(){
+  if(OFFLINE) return true;
+  if(supa) return true;
+  if(typeof supabase==='undefined' || !supabase.createClient) return false;
+  supa = supabase.createClient(SUPABASE_URL.trim().replace(/\/+$/,''), SUPABASE_ANON_KEY.trim());
+  return true;
+}
+function loadSupabaseLib(){   // โหลดไลบรารีซ้ำจาก CDN สำรอง ถ้าครั้งแรกพลาด
+  return new Promise(resolve=>{
+    if(typeof supabase!=='undefined' && supabase.createClient) return resolve(true);
+    const s=document.createElement('script');
+    s.src='https://unpkg.com/@supabase/supabase-js@2';
+    s.onload=()=>resolve(typeof supabase!=='undefined' && !!supabase.createClient);
+    s.onerror=()=>resolve(false);
+    document.head.appendChild(s);
+  });
+}
 let currentUser=null, currentToken=null, currentRole="user", currentName="", dirty=false, pingTimer=null, pingFails=0;
 
 const PALETTE = [
@@ -512,6 +530,7 @@ function applyState(d){
 // ---------- API (คุยกับ Supabase ผ่าน RPC) ----------
 async function api(payload){
   if(OFFLINE) return {ok:false, error:'offline'};
+  if(!supa && !ensureClient()) return {ok:false, error:'ระบบยังไม่พร้อม ลองรีเฟรชหน้า'};
   const p=payload; let fn, args;
   switch(p.action){
     case 'login':      fn='app_login';       args={p_username:p.username, p_password:p.password}; break;
@@ -731,12 +750,16 @@ async function submitPw(){
 
 // ---------- เริ่มทำงาน ----------
 async function init(){
-  render();
+  render(); setWeek();                 // แสดงโปสเตอร์เสมอ (กันหน้าเปล่า)
   if(OFFLINE){
     document.querySelectorAll('.online-only').forEach(el=>el.style.display='none');
-    setWeek(); return;
+    return;
   }
-  setWeek();
+  // ทำให้ไลบรารี Supabase พร้อมก่อน (กัน CDN ช้า/พลาด แล้วหน้าเปล่า)
+  if(!ensureClient()){
+    await loadSupabaseLib();
+    if(!ensureClient()){ showLogin('โหลดระบบไม่สำเร็จ กรุณารีเฟรชหน้า (กด F5)'); return; }
+  }
   document.getElementById('lp').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
   document.getElementById('lu').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('lp').focus(); });
   const s=loadSession();
