@@ -1,806 +1,287 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ระบบรายงานความคืบหน้ารายสัปดาห์</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%237c4dff'/%3E%3Crect%20x='14'%20y='34'%20width='8'%20height='16'%20rx='2'%20fill='%23fff'/%3E%3Crect%20x='28'%20y='24'%20width='8'%20height='26'%20rx='2'%20fill='%23fff'/%3E%3Crect%20x='42'%20y='16'%20width='8'%20height='34'%20rx='2'%20fill='%23fff'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root{ --ink:#1a2233; --muted:#5a6478; --paper:#fbf7f0; --card:#fff; --line:#eae3d8;
-    --accent:#8a5cf6; --eyebrow:#ff5a5f; --body-text:#37414f;
-    --h1size:44px; --eyebrow-size:15px; --title-size:20px; --body-size:13.5px; }
-  *{margin:0;padding:0;box-sizing:border-box}
-  .ic-svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;flex-shrink:0}
-  body{font-family:'Sarabun',sans-serif;background:linear-gradient(180deg,#eef1f6 0%,#e6ebf4 100%);min-height:100vh;color:#1a2233;-webkit-font-smoothing:antialiased}
+-- ============================================================
+--  ระบบรายงานรายสัปดาห์ — ตั้งค่าฐานข้อมูล Supabase
+--  วิธีใช้: เปิดโปรเจกต์ Supabase > เมนู SQL Editor > New query
+--          วางทั้งหมดนี้ > กด Run (ครั้งเดียวจบ)
+-- ============================================================
 
-  .toolbar{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#151d2e 0%,#0e1420 100%);color:#fff;
-    padding:13px 22px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-    border-bottom:1px solid rgba(255,255,255,.06);box-shadow:0 6px 22px rgba(10,15,25,.28)}
-  .toolbar .brand{font-family:'Prompt',sans-serif;font-weight:700;font-size:16px;display:flex;align-items:center;gap:9px}
-  .toolbar .brand .dot{width:11px;height:11px;border-radius:4px;background:#31c26b}
-  .toolbar .who{font-family:'Prompt',sans-serif;font-size:13px;color:#9aa4b6;margin-right:auto}
-  .toolbar .who b{color:#e7ecf5}
-  .btn{font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;cursor:pointer;border:none;border-radius:11px;
-    padding:11px 18px;display:inline-flex;align-items:center;gap:8px;transition:transform .06s ease, filter .15s ease}
-  .btn:active{transform:translateY(1px)}
-  .btn-primary{background:#31c26b;color:#04120a}
-  .btn-primary:hover{filter:brightness(1.06)}
-  .btn-ghost{background:#232c3d;color:#e7ecf5}
-  .btn-ghost:hover{background:#2c374c}
-  .btn-blue{background:#2f8bff;color:#fff}
-  .btn-blue:hover{filter:brightness(1.06)}
-  .btn-sm{padding:8px 12px;font-size:13px}
-  .wknav{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.05);padding:4px;border-radius:13px}
-  .wkbtn{padding:9px 12px}
-  /* dropdown ปุ่ม PNG */
-  .dd{position:relative;display:inline-flex;align-items:stretch}
-  .dd .ddmain{border-top-right-radius:0;border-bottom-right-radius:0}
-  .dd .ddcaret{border-top-left-radius:0;border-bottom-left-radius:0;padding:11px 11px;margin-left:1px;font-size:12px}
-  .ddmenu{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:13px;
-    box-shadow:0 16px 38px rgba(10,15,25,.25);padding:6px;display:none;flex-direction:column;gap:2px;z-index:80;min-width:236px}
-  .ddmenu.show{display:flex}
-  .ddmenu button{font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;text-align:left;border:none;
-    background:none;padding:11px 12px;border-radius:9px;cursor:pointer;color:#1a2233;white-space:nowrap;display:flex;gap:8px;align-items:center}
-  .ddmenu button:hover{background:#eef1f6}
+-- เข้ารหัสรหัสผ่าน (bcrypt)
+create extension if not exists pgcrypto;
 
-  .wkpick,.hist{font-family:'Prompt',sans-serif;font-weight:600;font-size:13px;border:none;border-radius:10px;
-    padding:8px 10px;background:#232c3d;color:#e7ecf5;cursor:pointer;max-width:210px}
-  .wkpick::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.7;cursor:pointer}
+-- ---------- ตาราง ----------
+create table if not exists app_users (
+  username      text primary key,
+  password_hash text not null,
+  display_name  text,
+  role          text default 'user',
+  token         text
+);
 
-  /* แถบบอกว่ากำลังดูย้อนหลัง */
-  .viewbanner{background:#8a5cf6;color:#fff;
-    padding:9px 22px;display:none;align-items:center;gap:12px;font-family:'Prompt',sans-serif;font-weight:600;font-size:14px}
-  .viewbanner b{font-weight:800}
-  .viewbanner .btn{margin-left:auto}
+create table if not exists reports (
+  id          bigint generated always as identity primary key,
+  username    text not null references app_users(username) on delete cascade,
+  week_key    text not null,
+  range_label text,
+  data        jsonb,
+  updated_at  timestamptz default now()
+);
+create index if not exists idx_reports_user on reports(username);
 
-  .stage{padding:30px 20px 60px;display:flex;justify-content:center}
-  .poster{width:1240px;padding:52px 56px 60px;background:
-      radial-gradient(1200px 480px at 8% -6%, #fff4e8 0%, rgba(255,244,232,0) 60%),
-      radial-gradient(1000px 460px at 100% 0%, #eef4ff 0%, rgba(238,244,255,0) 55%),
-      var(--paper);border-radius:8px;box-shadow:0 20px 60px rgba(26,34,51,.14)}
+-- ปิดการเข้าถึงตารางตรงๆ จาก anon (ต้องผ่านฟังก์ชันเท่านั้น)
+alter table app_users enable row level security;
+alter table reports   enable row level security;
 
-  [contenteditable]{outline:none;border-radius:5px;transition:box-shadow .12s,background .12s}
-  [contenteditable]:hover{box-shadow:0 0 0 2px rgba(47,139,255,.28)}
-  [contenteditable]:focus{box-shadow:0 0 0 2px #2f8bff;background:rgba(47,139,255,.06)}
-  .top [contenteditable]:hover{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
-  .top [contenteditable]:focus{box-shadow:0 0 0 2px #fff;background:rgba(255,255,255,.16)}
+-- ---------- helper ----------
+create or replace function app_role(p_username text, p_role text)
+returns text language sql immutable as $$
+  select case when lower(coalesce(p_role,'')) = 'admin'
+                or lower(trim(p_username)) = 'admin' then 'admin' else 'user' end;
+$$;
 
-  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:38px}
-  .eyebrow{font-family:'Prompt',sans-serif;font-weight:600;font-size:var(--eyebrow-size);letter-spacing:.14em;color:var(--eyebrow);
-    display:inline-flex;align-items:center;gap:10px;margin-bottom:12px}
-  .eyebrow::before{content:"";width:26px;height:3px;border-radius:3px;background:var(--eyebrow)}
-  h1{font-family:'Prompt',sans-serif;font-weight:800;font-size:var(--h1size);line-height:1.12;letter-spacing:-.01em;color:var(--ink)}
-  h1 .accent{color:var(--accent)}
-  .daterange{text-align:right;flex-shrink:0}
-  .daterange .lbl{font-size:14px;color:var(--muted);font-weight:500;margin-bottom:4px}
-  .daterange .val{font-family:'Prompt',sans-serif;font-weight:700;font-size:24px;color:var(--ink);
-    background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 20px;box-shadow:0 6px 18px rgba(26,34,51,.05)}
+-- คืน "ชุดแถว" (setof) เพื่อให้เมื่อ token ไม่ตรง = ได้ 0 แถว (NOT FOUND) จริงๆ
+-- ถ้าใช้ returns app_users เฉยๆ เมื่อไม่ตรงจะได้ 1 แถวที่เป็น null ทั้งหมด (บั๊ก)
+drop function if exists app_auth(text,text);
+create or replace function app_auth(p_username text, p_token text)
+returns setof app_users language sql stable as $$
+  select * from app_users
+   where username = trim(p_username) and token is not null
+     and token = encode(digest(p_token, 'sha256'), 'hex');   -- เทียบกับ hash ของ token
+$$;
 
-  .strip{display:grid;gap:14px;margin-bottom:34px}
-  .pill{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden;box-shadow:0 6px 16px rgba(26,34,51,.04)}
-  .pill::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--dot)}
-  .pill .code{font-family:'Prompt',sans-serif;font-weight:700;font-size:13px;color:var(--muted);margin-bottom:2px}
-  .pill .pct{font-family:'Prompt',sans-serif;font-weight:800;font-size:30px;line-height:1;color:var(--dot)}
-  .pill .nm{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.3;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+-- ---------- auth ----------
+create or replace function app_login(p_username text, p_password text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; t text;
+begin
+  select * into u from app_users where username = trim(p_username);
+  if not found or u.password_hash <> crypt(p_password, u.password_hash) then
+    return jsonb_build_object('ok', false, 'error', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+  end if;
+  t := encode(gen_random_bytes(16), 'hex');                    -- token จริง (ส่งให้เว็บ)
+  update app_users set token = encode(digest(t, 'sha256'), 'hex')  -- เก็บเฉพาะ hash ในฐานข้อมูล
+    where username = u.username;                                -- session ใหม่ = เตะเครื่องเก่า
+  return jsonb_build_object('ok', true, 'displayName', coalesce(u.display_name, u.username),
+                            'role', app_role(u.username, u.role), 'token', t);
+end; $$;
 
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-  .card{background:var(--card);border-radius:20px;border:1.5px solid var(--line);overflow:hidden;
-    box-shadow:0 10px 30px rgba(26,34,51,.06);display:flex;flex-direction:column;position:relative}
-  .card .top{padding:20px 22px 18px;color:#fff;background:linear-gradient(135deg,var(--a) 0%,var(--a2) 100%)}
-  .card .top .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-right:62px}
-  .card .top .title{font-family:'Prompt',sans-serif;font-weight:700;font-size:var(--title-size);line-height:1.2;flex:1}
-  .card .top .code{font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;background:rgba(255,255,255,.22);padding:5px 10px;border-radius:8px;white-space:nowrap}
-  .badge{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-family:'Prompt',sans-serif;font-weight:600;font-size:13px}
-  .badge .pctwrap{font-weight:800;font-size:15px}
-  .bar{height:9px;border-radius:9px;background:rgba(255,255,255,.28);margin-top:13px;overflow:hidden}
-  .bar>i{display:block;height:100%;border-radius:9px;background:#fff;transition:width .2s ease}
+create or replace function app_ping(p_username text, p_token text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  return jsonb_build_object('ok', true, 'displayName', coalesce(u.display_name, u.username),
+                            'role', app_role(u.username, u.role));
+end; $$;
 
-  .body{padding:18px 22px 20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1}
-  .col h4{font-family:'Prompt',sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em;display:flex;align-items:center;gap:7px;margin-bottom:10px}
-  .col h4 .ic{width:9px;height:9px;border-radius:3px;background:var(--a)}
-  .col.next h4 .ic{background:var(--muted);opacity:.5}
-  ul{list-style:none;display:flex;flex-direction:column;gap:7px}
-  li{font-size:var(--body-size);line-height:1.42;color:var(--body-text);padding-left:16px;padding-right:22px;position:relative}
-  li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--a)}
-  li .txt{display:inline;outline:none}
-  .col.next li{color:var(--muted)}
-  .col.next li::before{background:#c4cbd6}
-  .delline{position:absolute;right:0;top:1px;width:17px;height:17px;padding:0;border:none;background:none;
-    color:#c4cbd6;font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .12s,color .12s;
-    display:flex;align-items:center;justify-content:center;border-radius:4px}
-  li:hover .delline{opacity:1}
-  .delline:hover{color:#ff5a5f;background:rgba(255,90,95,.1)}
-  .addline{margin-top:8px;font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;color:var(--muted);
-    cursor:pointer;background:none;border:1px dashed #cfd6e2;border-radius:8px;padding:4px 10px;display:inline-flex;align-items:center;gap:5px}
-  .addline:hover{color:var(--ink);border-color:#9aa4b6}
-  .removecard{position:absolute;top:12px;right:12px;z-index:5;width:26px;height:26px;border-radius:8px;
-    border:none;background:rgba(0,0,0,.28);color:#fff;font-size:15px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
-  .removecard:hover{background:rgba(0,0,0,.5)}
-  .cardcolor{position:absolute;top:13px;right:44px;z-index:5;width:24px;height:24px;padding:0;
-    border:2px solid rgba(255,255,255,.75);border-radius:50%;cursor:pointer;background:none;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.25)}
-  .cardcolor::-webkit-color-swatch-wrapper{padding:0}
-  .cardcolor::-webkit-color-swatch{border:none;border-radius:50%}
-  .cardcolor::-moz-color-swatch{border:none;border-radius:50%}
-  .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1.5px solid var(--line);padding-top:18px}
+-- ---------- รายงาน ----------
+-- บันทึกแบบ 1 รายงานต่อสัปดาห์ (ทับของเดิม + เก็บความซ้ำเก่าออก)
+create or replace function app_save(p_username text, p_token text, p_week_key text,
+                                    p_range_label text, p_data jsonb)
+returns jsonb language plpgsql security definer as $$
+declare u app_users;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  delete from reports where username = u.username and week_key = p_week_key;  -- ลบของสัปดาห์นี้ทิ้งก่อน (รวมของซ้ำเก่า)
+  insert into reports(username, week_key, range_label, data, updated_at)
+    values (u.username, p_week_key, p_range_label, p_data, now());
+  return jsonb_build_object('ok', true);
+end; $$;
 
-  .exporting .addline,.exporting .removecard,.exporting .delline,.exporting .cardcolor{display:none !important}
-  .exporting .card .top .row{padding-right:0 !important}
-  .exporting [contenteditable]{box-shadow:none !important;background:none !important}
+-- โหลดเวอร์ชันล่าสุดของสัปดาห์
+create or replace function app_load(p_username text, p_token text, p_week_key text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; r reports;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  select * into r from reports where username = u.username and week_key = p_week_key
+    order by updated_at desc limit 1;
+  if not found then return jsonb_build_object('ok', true, 'data', null); end if;
+  return jsonb_build_object('ok', true, 'data', r.data, 'rangeLabel', r.range_label);
+end; $$;
 
-  /* login */
-  .loginwrap{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;
-    background:radial-gradient(900px 520px at 14% 8%, rgba(138,92,246,.38), transparent 60%),
-              radial-gradient(820px 520px at 88% 92%, rgba(49,194,107,.28), transparent 55%),
-              linear-gradient(135deg,#0f1626 0%,#1a2740 100%)}
-  .logincard{width:392px;max-width:100%;background:#fff;border-radius:24px;padding:38px 34px 32px;
-    box-shadow:0 34px 90px rgba(0,0,0,.42);position:relative;overflow:hidden}
-  .logincard::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#8a5cf6,#2f8bff,#31c26b)}
-  .loginlogo{width:62px;height:62px;border-radius:19px;margin:6px auto 16px;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,#8a5cf6,#6d3ff0);box-shadow:0 12px 26px rgba(138,92,246,.42)}
-  .loginlogo svg{width:31px;height:31px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .loginbrand{font-family:'Prompt',sans-serif;font-weight:800;font-size:22px;text-align:center;color:#1a2233}
-  .loginsub{color:var(--muted);font-size:14px;text-align:center;margin:6px 0 24px}
-  .field{position:relative;margin-bottom:13px}
-  .field .fic{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;
-    stroke:#9aa4b6;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
-  .field .lin{margin-bottom:0;padding-left:42px}
-  .lin{width:100%;font-family:'Sarabun',sans-serif;font-size:15px;border:1.5px solid var(--line);border-radius:12px;
-    padding:13px 14px;margin-bottom:12px;outline:none;background:#fbfbfd;transition:border-color .12s,box-shadow .12s,background .12s}
-  .lin:focus{border-color:#8a5cf6;box-shadow:0 0 0 3px rgba(138,92,246,.15);background:#fff}
-  .lbtn{width:100%;justify-content:center;font-size:15px;padding:14px;margin-top:8px;
-    background:linear-gradient(135deg,#8a5cf6,#6d3ff0);color:#fff}
-  .lbtn:hover{filter:brightness(1.07)}
-  .lerr{color:#e0362f;font-size:13px;min-height:18px;margin:2px 0 2px;font-weight:600;text-align:center}
+-- โหลดเวอร์ชันเจาะจงตาม id (admin เปิดของใครก็ได้ / ผู้ใช้ทั่วไปเปิดได้เฉพาะของตัวเอง)
+create or replace function app_load_row(p_username text, p_token text, p_row bigint)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; r reports;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  if app_role(u.username, u.role) = 'admin' then
+    select * into r from reports where id = p_row;
+  else
+    select * into r from reports where id = p_row and username = u.username;
+  end if;
+  if not found then return jsonb_build_object('ok', false, 'error', 'ไม่พบรายการ'); end if;
+  return jsonb_build_object('ok', true, 'data', r.data, 'weekKey', r.week_key, 'rangeLabel', r.range_label, 'owner', r.username);
+end; $$;
 
-  /* modal จัดการผู้ใช้ */
-  .modal{position:fixed;inset:0;z-index:210;background:rgba(17,24,38,.55);display:none;align-items:center;justify-content:center;padding:20px}
-  .modalcard{width:520px;max-width:100%;max-height:88vh;overflow:auto;background:#fff;border-radius:20px;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
-  .modalhead{font-family:'Prompt',sans-serif;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .mclose{border:none;background:#eef1f6;width:32px;height:32px;border-radius:10px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#1a2233}
-  .uform{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
-  .uform .lin{margin-bottom:0}
-  .uform .full{grid-column:1/-1}
-  .uerr{color:#e0362f;font-size:13px;min-height:18px;font-weight:600;margin:6px 0}
-  .ulist{margin-top:8px;border-top:1.5px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px}
-  .urow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px}
-  .urow .un{font-family:'Prompt',sans-serif;font-weight:700}
-  .urow .ur{font-size:12px;color:#fff;background:#8a5cf6;padding:2px 8px;border-radius:20px;font-family:'Prompt',sans-serif;font-weight:600}
-  .urow .ur.user{background:#98a2b3}
-  .urow .um{color:var(--muted);font-size:13px;margin-right:auto}
-  .udel{border:none;background:#ffe9e9;color:#e0362f;font-weight:700;border-radius:9px;padding:6px 12px;cursor:pointer;font-family:'Prompt',sans-serif;font-size:13px}
-  .udel:hover{background:#ffd6d6}
+-- admin: รายการรายงานของทุกคน (ใหม่สุดก่อน)
+create or replace function app_weeks_all(p_username text, p_token text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; res jsonb;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  if app_role(u.username, u.role) <> 'admin' then
+    return jsonb_build_object('ok', false, 'error', 'เฉพาะผู้ดูแลระบบ'); end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'row', id, 'owner', username, 'weekKey', week_key,
+           'rangeLabel', range_label, 'updatedAt', updated_at) order by updated_at desc), '[]'::jsonb)
+    into res from reports;
+  return jsonb_build_object('ok', true, 'weeks', res);
+end; $$;
 
-  /* หน้าจัดการผู้ใช้ (เต็มหน้า) */
-  .adminpage{position:fixed;inset:0;z-index:220;background:#eef1f6;display:none;flex-direction:column;overflow:auto}
-  .adminbar{position:sticky;top:0;background:#111826;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 18px rgba(0,0,0,.18)}
-  .adminbar .admintitle{font-family:'Prompt',sans-serif;font-weight:700;font-size:18px}
-  .adminbody{max-width:720px;margin:0 auto;width:100%;padding:26px 20px 60px;display:flex;flex-direction:column;gap:22px}
-  .adminsection{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 10px 30px rgba(26,34,51,.05)}
-  .secttitle{font-family:'Prompt',sans-serif;font-weight:700;font-size:16px;margin-bottom:14px}
+-- รายการย้อนหลังทั้งหมด (ใหม่สุดก่อน)
+create or replace function app_weeks(p_username text, p_token text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; res jsonb;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'row', id, 'weekKey', week_key, 'rangeLabel', range_label, 'updatedAt', updated_at)
+           order by updated_at desc), '[]'::jsonb)
+    into res from reports where username = u.username;
+  return jsonb_build_object('ok', true, 'weeks', res);
+end; $$;
 
-  #pwmodal{z-index:240}
-  #confirmmodal{z-index:260}
-  .confirmcard{width:360px;max-width:100%;background:#fff;border-radius:18px;padding:24px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
-  .confirmmsg{font-family:'Prompt',sans-serif;font-weight:600;font-size:16px;margin-bottom:18px;line-height:1.45}
-  .confirmbtns{display:flex;justify-content:flex-end;gap:10px}
-  .btn-light{background:#eef1f6;color:#1a2233}
-  .btn-light:hover{background:#e2e6ee}
-  .btn-danger{background:#e0362f;color:#fff}
-  .btn-danger:hover{filter:brightness(1.06)}
+create or replace function app_delete_week(p_username text, p_token text, p_row bigint)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; n int;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  delete from reports where id = p_row and username = u.username;
+  get diagnostics n = row_count;
+  if n = 0 then return jsonb_build_object('ok', false, 'error', 'ไม่พบรายการ'); end if;
+  return jsonb_build_object('ok', true);
+end; $$;
 
-  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#111826;color:#fff;
-    font-family:'Prompt',sans-serif;font-weight:600;font-size:14px;padding:12px 20px;border-radius:12px;
-    box-shadow:0 12px 30px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-</style>
-</head>
-<body>
+-- ---------- admin: จัดการผู้ใช้ ----------
+create or replace function app_add_user(p_username text, p_token text, p_new_username text,
+                                        p_new_password text, p_display text, p_role text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  if app_role(u.username, u.role) <> 'admin' then
+    return jsonb_build_object('ok', false, 'error', 'เฉพาะผู้ดูแลระบบ'); end if;
+  if trim(coalesce(p_new_username,'')) = '' or coalesce(p_new_password,'') = '' then
+    return jsonb_build_object('ok', false, 'error', 'กรอกชื่อผู้ใช้และรหัสผ่าน'); end if;
+  if exists(select 1 from app_users where username = trim(p_new_username)) then
+    return jsonb_build_object('ok', false, 'error', 'มีชื่อผู้ใช้นี้แล้ว'); end if;
+  insert into app_users(username, password_hash, display_name, role, token)
+    values (trim(p_new_username), crypt(p_new_password, gen_salt('bf')),
+            coalesce(p_display, p_new_username),
+            case when p_role = 'admin' then 'admin' else 'user' end, null);
+  return jsonb_build_object('ok', true);
+end; $$;
 
-<!-- ===== หน้าล็อกอิน ===== -->
-<div class="loginwrap" id="loginwrap">
-  <div class="logincard">
-    <div class="loginlogo"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg></div>
-    <div class="loginbrand">รายงานประจำสัปดาห์</div>
-    <div class="loginsub">เข้าสู่ระบบเพื่อจัดการรายงานของคุณ</div>
-    <div class="field">
-      <svg class="fic" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <input id="lu" class="lin" placeholder="ชื่อผู้ใช้" autocomplete="username">
-    </div>
-    <div class="field">
-      <svg class="fic" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <input id="lp" class="lin" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
-    </div>
-    <div class="lerr" id="lerr"></div>
-    <button class="btn lbtn" onclick="doLogin()">เข้าสู่ระบบ</button>
-  </div>
-</div>
+create or replace function app_list_users(p_username text, p_token text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; res jsonb;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  if app_role(u.username, u.role) <> 'admin' then
+    return jsonb_build_object('ok', false, 'error', 'เฉพาะผู้ดูแลระบบ'); end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'username', username, 'displayName', display_name, 'role', app_role(username, role))
+           order by username), '[]'::jsonb)
+    into res from app_users;
+  return jsonb_build_object('ok', true, 'users', res);
+end; $$;
 
-<!-- ===== แถบดูย้อนหลัง ===== -->
-<div class="viewbanner" id="viewbanner">
-  <svg class="ic-svg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-  กำลังดูรายงานย้อนหลัง: <b id="vbweek"></b>
-  <button class="btn btn-ghost btn-sm" onclick="thisWeek()"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.1-9.4L3 7"/></svg> กลับสัปดาห์ปัจจุบัน</button>
-</div>
+create or replace function app_delete_user(p_username text, p_token text, p_target text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  if app_role(u.username, u.role) <> 'admin' then
+    return jsonb_build_object('ok', false, 'error', 'เฉพาะผู้ดูแลระบบ'); end if;
+  if lower(trim(p_target)) = 'admin' then
+    return jsonb_build_object('ok', false, 'error', 'ลบบัญชี admin ไม่ได้'); end if;
+  if trim(p_target) = u.username then
+    return jsonb_build_object('ok', false, 'error', 'ลบบัญชีตัวเองไม่ได้'); end if;
+  delete from app_users where username = trim(p_target);
+  return jsonb_build_object('ok', true);
+end; $$;
 
-<div class="toolbar">
-  <div class="brand"><span class="dot"></span>รายงานรายสัปดาห์</div>
-  <span class="who" id="who"></span>
-  <span class="wknav">
-    <button class="btn btn-ghost wkbtn" onclick="shiftWeek(-1)" title="สัปดาห์ก่อนหน้า"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <button class="btn btn-ghost wkbtn" onclick="shiftWeek(1)" title="สัปดาห์ถัดไป"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
-    <input type="date" id="wkpick" class="wkpick" onchange="pickWeek(this.value)" title="เลือกวันที่ในสัปดาห์ที่ต้องการ">
-    <button class="btn btn-ghost" onclick="thisWeek()">สัปดาห์นี้</button>
-  </span>
-  <button class="btn btn-ghost online-only" id="histBtn" onclick="openHistory()" title="ดูรายงานย้อนหลัง"><svg class="ic-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> ดูย้อนหลัง</button>
-  <button class="btn btn-ghost" onclick="addProject()"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> เพิ่มโครงการ</button>
-  <button class="btn btn-ghost" onclick="resetDefault()" title="ล้างเป็นฟอร์มเริ่มต้น"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg> ค่าเริ่มต้น</button>
-  <span class="dd">
-    <button class="btn btn-primary ddmain" onclick="pngAction('both')"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> PNG</button>
-    <button class="btn btn-primary ddcaret" onclick="toggleDD(event)" title="ตัวเลือกบันทึก/โหลด"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-    <div class="ddmenu" id="ddmenu">
-      <button onclick="pngAction('both')"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg><span>บันทึก + โหลด PNG</span></button>
-      <button onclick="pngAction('save')"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span>บันทึกอย่างเดียว</span></button>
-      <button onclick="pngAction('png')"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg><span>โหลด PNG อย่างเดียว</span></button>
-    </div>
-  </span>
-  <button class="btn btn-ghost online-only" id="pwBtn" onclick="openChangePw()" title="เปลี่ยนรหัสผ่านของฉัน"><svg class="ic-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> รหัสผ่าน</button>
-  <button class="btn btn-ghost online-only" id="adminBtn" onclick="openUsers()" style="display:none"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> จัดการผู้ใช้</button>
-  <button class="btn btn-ghost online-only" id="logoutBtn" onclick="logout()"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> ออกจากระบบ</button>
-</div>
+-- ผู้ใช้เปลี่ยนรหัสผ่านของตัวเอง (ต้องใส่รหัสเดิมให้ถูก)
+create or replace function app_change_password(p_username text, p_token text, p_old_password text, p_new_password text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users; rec app_users;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  select * into rec from app_users where username = u.username;
+  if rec.password_hash <> crypt(p_old_password, rec.password_hash) then
+    return jsonb_build_object('ok', false, 'error', 'รหัสผ่านปัจจุบันไม่ถูกต้อง'); end if;
+  if length(coalesce(p_new_password,'')) < 4 then
+    return jsonb_build_object('ok', false, 'error', 'รหัสผ่านใหม่สั้นเกินไป (อย่างน้อย 4 ตัว)'); end if;
+  update app_users set password_hash = crypt(p_new_password, gen_salt('bf')) where username = u.username;
+  return jsonb_build_object('ok', true);
+end; $$;
 
-<div class="stage">
-  <div class="poster" id="poster">
-    <div class="head">
-      <div>
-        <span class="eyebrow" id="eyebrow" contenteditable="true">รายงานประจำสัปดาห์</span>
-        <h1><span id="h1a" contenteditable="true">อัปเดตความคืบหน้า</span><br><span id="h1b" class="accent" contenteditable="true">งานประจำสัปดาห์</span></h1>
-      </div>
-      <div class="daterange">
-        <div class="lbl">ช่วงเวลา</div>
-        <div class="val" id="drange" contenteditable="true">ระบุช่วงวันที่</div>
-      </div>
-    </div>
-    <div class="strip" id="strip"></div>
-    <div class="grid" id="grid"></div>
-    <div class="foot">
-      <div id="foot1" contenteditable="true">สรุปความคืบหน้าโครงการ</div>
-      <div id="frange" contenteditable="true">ระบุช่วงวันที่</div>
-    </div>
-  </div>
-</div>
+-- admin รีเซ็ตรหัสผ่านให้ผู้ใช้คนอื่น (คนนั้นจะถูกบังคับล็อกอินใหม่)
+create or replace function app_reset_password(p_username text, p_token text, p_target text, p_new_password text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  if app_role(u.username, u.role) <> 'admin' then
+    return jsonb_build_object('ok', false, 'error', 'เฉพาะผู้ดูแลระบบ'); end if;
+  if not exists(select 1 from app_users where username = trim(p_target)) then
+    return jsonb_build_object('ok', false, 'error', 'ไม่พบผู้ใช้'); end if;
+  if length(coalesce(p_new_password,'')) < 4 then
+    return jsonb_build_object('ok', false, 'error', 'รหัสผ่านสั้นเกินไป (อย่างน้อย 4 ตัว)'); end if;
+  update app_users set password_hash = crypt(p_new_password, gen_salt('bf')), token = null
+    where username = trim(p_target);
+  return jsonb_build_object('ok', true);
+end; $$;
 
-<!-- ===== หน้าจัดการผู้ใช้ (เต็มหน้า, เฉพาะ admin) ===== -->
-<div class="adminpage" id="adminpage">
-  <div class="adminbar">
-    <button class="btn btn-light" onclick="closeUsers()"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> กลับ</button>
-    <div class="admintitle">จัดการผู้ใช้</div>
-  </div>
-  <div class="adminbody">
-    <div class="adminsection">
-      <div class="secttitle">เพิ่มผู้ใช้ใหม่</div>
-      <div class="uform">
-        <input id="nu_user" class="lin" placeholder="ชื่อผู้ใช้ (อังกฤษ)">
-        <input id="nu_pass" class="lin" placeholder="รหัสผ่าน">
-        <input id="nu_name" class="lin" placeholder="ชื่อที่แสดง">
-        <select id="nu_role" class="lin"><option value="user">ผู้ใช้ทั่วไป</option><option value="admin">แอดมิน</option></select>
-        <button class="btn btn-primary full" onclick="addUser()"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> เพิ่มผู้ใช้</button>
-      </div>
-      <div class="uerr" id="uerr"></div>
-    </div>
-    <div class="adminsection">
-      <div class="secttitle">รายชื่อผู้ใช้ทั้งหมด</div>
-      <div class="ulist" id="ulist"></div>
-    </div>
-  </div>
-</div>
+-- ส่งออกข้อมูลทั้งหมด (admin เท่านั้น) — ใช้กับ auto-backup
+create or replace function app_export_all(p_username text, p_token text)
+returns jsonb language plpgsql security definer as $$
+declare u app_users;
+begin
+  select * into u from app_auth(p_username, p_token);
+  if not found then return jsonb_build_object('ok', false, 'error', 'session'); end if;
+  if app_role(u.username, u.role) <> 'admin' then
+    return jsonb_build_object('ok', false, 'error', 'เฉพาะผู้ดูแลระบบ'); end if;
+  return jsonb_build_object(
+    'ok', true,
+    'exported_at', now(),
+    'count', (select count(*) from reports),
+    'users', (select coalesce(jsonb_agg(jsonb_build_object(
+                'username', username, 'displayName', display_name, 'role', role) order by username), '[]'::jsonb)
+              from app_users),
+    'reports', (select coalesce(jsonb_agg(jsonb_build_object(
+                  'id', id, 'username', username, 'week_key', week_key,
+                  'range_label', range_label, 'data', data, 'updated_at', updated_at)
+                  order by username, updated_at), '[]'::jsonb)
+                from reports)
+  );
+end; $$;
 
-<!-- ===== modal ดูย้อนหลัง ===== -->
-<div class="modal" id="histmodal">
-  <div class="modalcard">
-    <div class="modalhead">ดูย้อนหลัง <button class="mclose" onclick="closeHistory()"><svg class="ic-svg" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="ulist" id="histlist"></div>
-  </div>
-</div>
+-- ---------- สิทธิ์: ให้ anon เรียกได้เฉพาะฟังก์ชันเหล่านี้ ----------
+grant execute on function
+  app_login(text,text), app_ping(text,text),
+  app_save(text,text,text,text,jsonb), app_load(text,text,text),
+  app_load_row(text,text,bigint), app_weeks(text,text), app_delete_week(text,text,bigint),
+  app_add_user(text,text,text,text,text,text), app_list_users(text,text), app_delete_user(text,text,text),
+  app_change_password(text,text,text,text), app_reset_password(text,text,text,text),
+  app_export_all(text,text), app_weeks_all(text,text)
+to anon, authenticated;
 
-<!-- ===== โมดัลเปลี่ยน/รีเซ็ตรหัสผ่าน ===== -->
-<div class="modal" id="pwmodal">
-  <div class="modalcard" style="width:400px">
-    <div class="modalhead"><span id="pwtitletext">เปลี่ยนรหัสผ่าน</span> <button class="mclose" onclick="closePw()"><svg class="ic-svg" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <input id="pw_old" class="lin" type="password" placeholder="รหัสผ่านปัจจุบัน">
-    <input id="pw_new" class="lin" type="password" placeholder="รหัสผ่านใหม่">
-    <input id="pw_confirm" class="lin" type="password" placeholder="ยืนยันรหัสผ่านใหม่">
-    <div class="uerr" id="pwerr"></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitPw()">บันทึกรหัสผ่านใหม่</button>
-  </div>
-</div>
+-- ---------- สร้างบัญชี admin เริ่มต้น (เปลี่ยนรหัสผ่านหลังใช้งาน) ----------
+insert into app_users(username, password_hash, display_name, role)
+  values ('admin', crypt('admin1234', gen_salt('bf')), 'ผู้ดูแลระบบ', 'admin')
+  on conflict (username) do nothing;
 
-<!-- ===== กล่องยืนยันสวยๆ ===== -->
-<div class="modal" id="confirmmodal">
-  <div class="confirmcard">
-    <div class="confirmmsg" id="confirmmsg"></div>
-    <div class="confirmbtns">
-      <button class="btn btn-light" onclick="confirmResolve(false)">ยกเลิก</button>
-      <button class="btn btn-danger" id="confirmok" onclick="confirmResolve(true)">ลบ</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-/*************************************************************
- * ตั้งค่า Supabase — วางค่า 2 ตัวจากโปรเจกต์คุณ
- *   หาได้ที่: Supabase > Project Settings > API
- *   - Project URL         → SUPABASE_URL
- *   - Project API keys: anon public → SUPABASE_ANON_KEY
- * ถ้ายังไม่ตั้ง (เป็น PASTE...) จะเป็นโหมดออฟไลน์ (แก้+โหลด PNG ได้ ไม่มีล็อกอิน)
- *************************************************************/
-
-
-const OFFLINE = !SUPABASE_URL || SUPABASE_URL.indexOf("PASTE") >= 0;
-const SESSION_KEY = "wr_session_v1";
-let supa = null;
-function ensureClient(){
-  if(OFFLINE) return true;
-  if(supa) return true;
-  if(typeof supabase==='undefined' || !supabase.createClient) return false;
-  supa = supabase.createClient(SUPABASE_URL.trim().replace(/\/+$/,''), SUPABASE_ANON_KEY.trim());
-  return true;
-}
-function loadSupabaseLib(){   // โหลดไลบรารีซ้ำจาก CDN สำรอง ถ้าครั้งแรกพลาด
-  return new Promise(resolve=>{
-    if(typeof supabase!=='undefined' && supabase.createClient) return resolve(true);
-    const s=document.createElement('script');
-    s.src='https://unpkg.com/@supabase/supabase-js@2';
-    s.onload=()=>resolve(typeof supabase!=='undefined' && !!supabase.createClient);
-    s.onerror=()=>resolve(false);
-    document.head.appendChild(s);
-  });
-}
-let currentUser=null, currentToken=null, currentRole="user", currentName="", dirty=false, pingTimer=null, pingFails=0;
-
-const PALETTE = [
-  ["#ff5a5f","#ff8060"],["#8a5cf6","#b47dff"],["#12b3a6","#3fd6c8"],
-  ["#2f8bff","#5fa8ff"],["#ff8a3d","#ffb066"],["#31c26b","#5ad98a"],
-  ["#f4419b","#ff77bd"],["#f5b301","#ffcf4d"]
-];
-const SEED = [
-  {title:"ชื่อโครงการที่ 1",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:50,
-   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้"],next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป"]},
-  {title:"ชื่อโครงการที่ 2",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:30,
-   done:["ระบุงานที่ทำเสร็จในสัปดาห์นี้"],next:["ระบุงานที่จะทำต่อในสัปดาห์ถัดไป"]}
-];
-
-const grid = document.getElementById('grid');
-const strip = document.getElementById('strip');
-const poster = document.getElementById('poster');
-
-function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-function liHTML(text){
-  return `<li><span class="txt" contenteditable="true">${esc(text)}</span><button class="delline" title="ลบรายการ" contenteditable="false" onclick="delLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M18 6 6 18M6 6l12 12"/></svg></button></li>`;
-}
-function makeLi(text){ const li=document.createElement('li'); li.innerHTML=liHTML(text).replace(/^<li>|<\/li>$/g,''); return li; }
-function delLine(btn){ const li=btn.closest('li'); if(li) li.remove(); markDirty(); }
-function focusSpan(span,mode){ if(!span)return; span.focus(); const r=document.createRange(); r.selectNodeContents(span);
-  if(mode==='end')r.collapse(false); else if(mode==='start')r.collapse(true); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
-
-function lighten(hex,f){
-  const h=(hex||'#888888').replace('#','');
-  const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
-  const mix=c=>Math.round(c+(255-c)*f), to=c=>c.toString(16).padStart(2,'0');
-  return '#'+to(mix(r))+to(mix(g))+to(mix(b));
-}
-function applyCardColor(card,c){ card.style.setProperty('--a',c); card.style.setProperty('--a2',lighten(c,0.28)); }
-function setCardColor(inp){ const card=inp.closest('.card'); card.dataset.color=inp.value; applyCardColor(card,inp.value); refreshStrip(); markDirty(); }
-
-function cardHTML(p){
-  return `
-  <div class="card"${p.color?` data-color="${esc(p.color)}"`:''}>
-    <button class="removecard" title="ลบโครงการ" onclick="this.closest('.card').remove();refresh();markDirty()"><svg class="ic-svg" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-    <input type="color" class="cardcolor" title="เปลี่ยนสีการ์ด" value="${esc(p.color||'#888888')}" oninput="setCardColor(this)">
-    <div class="top">
-      <div class="row">
-        <div class="title" contenteditable="true">${esc(p.title)}</div>
-        <div class="code" contenteditable="true">${esc(p.code)}</div>
-      </div>
-      <div class="badge"><span class="status" contenteditable="true">${esc(p.status)}</span>
-        <span class="pctwrap"><span class="pct" contenteditable="true" oninput="onPct(this)">${p.pct}</span>%</span></div>
-      <div class="bar"><i style="width:${p.pct}%"></i></div>
-    </div>
-    <div class="body">
-      <div class="col done">
-        <h4><span class="ic"></span>สัปดาห์นี้</h4>
-        <ul>${(p.done||[]).map(liHTML).join('')}</ul>
-        <button class="addline" onclick="addLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายการ</button>
-      </div>
-      <div class="col next">
-        <h4><span class="ic"></span>ถัดไป</h4>
-        <ul>${(p.next||[]).map(liHTML).join('')}</ul>
-        <button class="addline" onclick="addLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายการ</button>
-      </div>
-    </div>
-  </div>`;
-}
-function render(){ grid.innerHTML = SEED.map(cardHTML).join(''); refresh(); }
-
-function cleanPct(el){ let n=parseInt((el.textContent||'').replace(/[^0-9]/g,''),10); if(isNaN(n))n=0; if(n>100)n=100; return n; }
-function onPct(el){ const n=cleanPct(el); el.closest('.card').querySelector('.bar>i').style.width=n+'%'; refreshStrip(); markDirty(); }
-function addLine(btn){ const ul=btn.previousElementSibling; const li=makeLi("รายการใหม่"); ul.appendChild(li); focusSpan(li.querySelector('.txt'),'all'); markDirty(); }
-function addProject(){
-  const p={title:"โครงการใหม่",code:"รหัสโครงการ",status:"กำลังดำเนินการ",pct:0,done:["รายการใหม่"],next:["รายการใหม่"]};
-  grid.insertAdjacentHTML('beforeend', cardHTML(p)); refresh(); markDirty();
-  grid.lastElementChild.scrollIntoView({behavior:'smooth',block:'center'});
-}
-async function resetDefault(){
-  if(!(await confirmBox('ล้างหน้านี้เป็นฟอร์มเริ่มต้น? สิ่งที่ยังไม่ได้กด PNG จะหาย','ล้าง'))) return;
-  render(); setWeek(); dirty=false;
-}
-function refreshColors(){
-  [...grid.children].forEach((card,i)=>{
-    let a,a2;
-    if(card.dataset.color){ a=card.dataset.color; a2=lighten(a,0.28); } else { [a,a2]=PALETTE[i%PALETTE.length]; }
-    card.style.setProperty('--a',a); card.style.setProperty('--a2',a2);
-    const inp=card.querySelector('.cardcolor'); if(inp) inp.value=a;
-  });
-}
-function refreshStrip(){
-  const cards=[...grid.children];
-  strip.style.gridTemplateColumns=`repeat(${Math.max(cards.length,1)},1fr)`;
-  strip.innerHTML=cards.map((card,i)=>{
-    const a = card.dataset.color || PALETTE[i%PALETTE.length][0];
-    const title=card.querySelector('.title').textContent.trim();
-    const code=card.querySelector('.code').textContent.trim();
-    const pct=cleanPct(card.querySelector('.pct'));
-    return `<div class="pill" style="--dot:${a}"><div class="code">${esc(code)}</div><div class="pct">${pct}%</div><div class="nm">${esc(title)}</div></div>`;
-  }).join('');
-}
-function refresh(){refreshColors();refreshStrip();}
-function markDirty(){ dirty=true; }
-
-grid.addEventListener('keydown',e=>{
-  const span=e.target; if(!span.classList||!span.classList.contains('txt'))return;
-  const li=span.closest('li'); if(!li)return;
-  if(e.key==='Enter'){ e.preventDefault(); const nl=makeLi(''); li.after(nl); focusSpan(nl.querySelector('.txt'),'start'); markDirty(); }
-  if(e.key==='Backspace' && span.textContent.replace(/​/g,'').trim()===''){
-    const prev=li.previousElementSibling; if(prev){ e.preventDefault(); li.remove(); focusSpan(prev.querySelector('.txt'),'end'); markDirty(); }
-  }
-});
-grid.addEventListener('input',e=>{ if(e.target.classList.contains('title')||e.target.classList.contains('code')) refreshStrip(); });
-poster.addEventListener('input',markDirty);
-poster.addEventListener('paste',e=>{
-  const t=e.target; if(!t||!t.isContentEditable)return; e.preventDefault();
-  const text=((e.clipboardData||window.clipboardData).getData('text/plain')||'').replace(/\r\n|\r|\n/g,' ').trim();
-  document.execCommand('insertText',false,text);
-});
-
-// ---------- จัดการสัปดาห์ ----------
-let weekBase = new Date();
-const THMON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-function weekRange(base){ let d=new Date(base); if(isNaN(d)) d=new Date(); const day=d.getDay();
-  const mon=new Date(d); mon.setDate(d.getDate()+(day===0?-6:1-day));
-  const fri=new Date(mon); fri.setDate(mon.getDate()+4); return {mon,fri}; }
-function iso(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function weekKey(){ return iso(weekRange(weekBase).mon); }
-function fmtRange(){ const {mon,fri}=weekRange(weekBase);
-  return `${mon.getDate()} ${THMON[mon.getMonth()]} – ${fri.getDate()} ${THMON[fri.getMonth()]} ${fri.getFullYear()+543}`; }
-function updateBanner(){
-  const banner=document.getElementById('viewbanner');
-  const isCurrent = OFFLINE || (weekKey()===iso(weekRange(new Date()).mon));
-  if(isCurrent){ banner.style.display='none'; }
-  else { banner.style.display='flex'; document.getElementById('vbweek').textContent=fmtRange(); }
-}
-function setWeek(){
-  const r=fmtRange();
-  document.getElementById('drange').textContent=r;
-  document.getElementById('frange').textContent='ประจำสัปดาห์ '+r;
-  const p=document.getElementById('wkpick'); if(p) p.value=iso(weekRange(weekBase).mon);
-  updateBanner();
-}
-async function leaveOk(){ if(OFFLINE||!dirty)return true; return await confirmBox('ยังไม่ได้บันทึกสัปดาห์นี้ ต้องการออกโดยไม่บันทึกไหม? การแก้ไขจะหาย','ออกไม่บันทึก'); }
-function afterNav(){ if(OFFLINE){ setWeek(); } else { loadWeek(); } }
-async function shiftWeek(n){ if(!(await leaveOk()))return; weekBase.setDate(weekBase.getDate()+n*7); afterNav(); }
-async function thisWeek(){ if(!(await leaveOk()))return; weekBase=new Date(); afterNav(); }
-async function pickWeek(v){ if(!v)return; if(!(await leaveOk())){setWeek();return;} weekBase=new Date(v+'T00:00:00'); afterNav(); }
-
-// ---------- อ่าน/เขียนสถานะ ----------
-function collectProjects(){
-  return [...grid.children].map(card=>({
-    title:card.querySelector('.title').textContent, code:card.querySelector('.code').textContent,
-    status:card.querySelector('.status').textContent, pct:cleanPct(card.querySelector('.pct')),
-    color:card.dataset.color||'',
-    done:[...card.querySelectorAll('.col.done li .txt')].map(s=>s.textContent),
-    next:[...card.querySelectorAll('.col.next li .txt')].map(s=>s.textContent)
-  }));
-}
-function collectState(){ const t=id=>document.getElementById(id).textContent;
-  return {eyebrow:t('eyebrow'),h1a:t('h1a'),h1b:t('h1b'),drange:t('drange'),foot1:t('foot1'),foot2:t('frange'),projects:collectProjects()}; }
-function applyState(d){
-  if(!d)return; const set=(id,v)=>{ if(v!=null){const el=document.getElementById(id); if(el)el.textContent=v;} };
-  if(d.projects){ grid.innerHTML=d.projects.map(cardHTML).join(''); refresh(); }
-  set('eyebrow',d.eyebrow); set('h1a',d.h1a); set('h1b',d.h1b); set('drange',d.drange); set('foot1',d.foot1); set('frange',d.foot2);
-}
-
-// ---------- API (คุยกับ Supabase ผ่าน RPC) ----------
-async function api(payload){
-  if(OFFLINE) return {ok:false, error:'offline'};
-  if(!supa && !ensureClient()) return {ok:false, error:'ระบบยังไม่พร้อม ลองรีเฟรชหน้า'};
-  const p=payload; let fn, args;
-  switch(p.action){
-    case 'login':      fn='app_login';       args={p_username:p.username, p_password:p.password}; break;
-    case 'ping':       fn='app_ping';        args={p_username:p.username, p_token:p.token}; break;
-    case 'save':       fn='app_save';        args={p_username:p.username, p_token:p.token, p_week_key:p.weekKey, p_range_label:p.rangeLabel, p_data:p.data}; break;
-    case 'load':       fn='app_load';        args={p_username:p.username, p_token:p.token, p_week_key:p.weekKey}; break;
-    case 'loadRow':    fn='app_load_row';    args={p_username:p.username, p_token:p.token, p_row:p.row}; break;
-    case 'weeks':      fn='app_weeks';       args={p_username:p.username, p_token:p.token}; break;
-    case 'deleteWeek': fn='app_delete_week'; args={p_username:p.username, p_token:p.token, p_row:p.row}; break;
-    case 'addUser':    fn='app_add_user';    args={p_username:p.username, p_token:p.token, p_new_username:p.newUser.username, p_new_password:p.newUser.password, p_display:p.newUser.displayName, p_role:p.newUser.role}; break;
-    case 'listUsers':  fn='app_list_users';  args={p_username:p.username, p_token:p.token}; break;
-    case 'deleteUser': fn='app_delete_user'; args={p_username:p.username, p_token:p.token, p_target:p.target}; break;
-    case 'changePw':   fn='app_change_password'; args={p_username:p.username, p_token:p.token, p_old_password:p.oldPassword, p_new_password:p.newPassword}; break;
-    case 'resetPw':    fn='app_reset_password';  args={p_username:p.username, p_token:p.token, p_target:p.target, p_new_password:p.newPassword}; break;
-    default: return {ok:false, error:'unknown action'};
-  }
-  const { data, error } = await supa.rpc(fn, args);
-  if(error) return {ok:false, error:error.message};
-  return data;
-}
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
-// กล่องยืนยันในแอป (คืนค่า Promise<boolean>)
-let _confirmCb=null;
-function confirmBox(msg, okLabel){
-  return new Promise(resolve=>{
-    document.getElementById('confirmmsg').textContent=msg;
-    document.getElementById('confirmok').textContent=okLabel||'ตกลง';
-    document.getElementById('confirmmodal').style.display='flex';
-    _confirmCb=resolve;
-  });
-}
-function confirmResolve(v){ document.getElementById('confirmmodal').style.display='none';
-  if(_confirmCb){ const cb=_confirmCb; _confirmCb=null; cb(v); } }
-// true = ทำงานต่อได้ ; false = token ไม่ผ่าน (ปล่อยให้ ping เป็นตัวตัดสิน)
-function handle(r){ return !(r && r.error==='session'); }
-
-// ---------- session ----------
-function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(
-  {user:currentUser,token:currentToken,role:currentRole,name:currentName})); }catch(e){} }
-function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
-function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
-
-async function enterApp(){
-  document.getElementById('loginwrap').style.display='none';
-  document.getElementById('who').innerHTML='ผู้ใช้: <b>'+esc(currentName||currentUser)+'</b>';
-  document.getElementById('adminBtn').style.display = (currentRole==='admin') ? '' : 'none';
-  await loadWeek();
-  startPing();
-}
-function showLogin(msg){
-  stopPing();
-  document.getElementById('loginwrap').style.display='flex';
-  if(msg) document.getElementById('lerr').textContent=msg;
-}
-function forceLogout(msg){ clearSession(); currentUser=currentToken=null; showLogin(msg||''); }
-
-async function doLogin(){
-  const u=document.getElementById('lu').value.trim(), p=document.getElementById('lp').value;
-  const err=document.getElementById('lerr'); err.textContent='';
-  if(!u||!p){ err.textContent='กรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
-  try{
-    const r=await api({action:'login',username:u,password:p});
-    if(r.ok){ currentUser=u; currentToken=r.token; currentRole=r.role||'user'; currentName=r.displayName||u;
-      saveSession(); document.getElementById('lp').value=''; enterApp(); }
-    else err.textContent=r.error||'ล็อกอินไม่สำเร็จ';
-  }catch(e){ err.textContent='เชื่อมต่อไม่ได้ ตรวจค่า Supabase/อินเทอร์เน็ต'; }
-}
-async function logout(){ if(!OFFLINE && !(await leaveOk())) return; forceLogout(''); }
-
-function startPing(){ stopPing(); pingTimer=setInterval(async()=>{
-  try{
-    const r=await api({action:'ping',username:currentUser,token:currentToken});
-    if(r && r.ok){ currentRole=r.role||currentRole;
-      document.getElementById('adminBtn').style.display=(currentRole==='admin')?'':'none'; }
-    else if(r && r.error==='session'){ forceLogout('เซสชันหมดอายุ หรือรหัสผ่านถูกรีเซ็ต กรุณาเข้าสู่ระบบใหม่'); }
-  }catch(e){} }, 15000); }
-function stopPing(){ if(pingTimer){ clearInterval(pingTimer); pingTimer=null; } }
-
-// ---------- รายงาน ----------
-async function autoSave(){   // คืน {ok, error, skipped}
-  if(OFFLINE || !currentUser) return {ok:false, skipped:true};
-  try{
-    const r=await api({action:'save',username:currentUser,token:currentToken,weekKey:weekKey(),rangeLabel:fmtRange(),data:collectState()});
-    if(r && r.ok){ dirty=false; return {ok:true}; }
-    return {ok:false, error:(r&&r.error)||'ไม่ทราบสาเหตุ'};
-  }catch(e){ return {ok:false, error:(e&&e.message)||'เชื่อมต่อไม่ได้'}; }
-}
-async function loadWeek(){
-  if(OFFLINE){ render(); setWeek(); return; }
-  setWeek();
-  try{
-    const r=await api({action:'load',username:currentUser,token:currentToken,weekKey:weekKey()});
-    if(r && r.ok && r.data){ applyState(r.data); }
-    else { render(); }                 // ไม่มีข้อมูล/พลาด → แสดงฟอร์มเริ่มต้นเสมอ
-  }catch(e){ render(); toast('โหลดข้อมูลไม่สำเร็จ'); }
-  if(!grid.children.length) render();   // กันการ์ดหาย
-  dirty=false; setWeek();
-}
-
-// ---------- หน้าต่างดูย้อนหลัง ----------
-function openHistory(){ document.getElementById('histmodal').style.display='flex'; renderHistory(); }
-function closeHistory(){ document.getElementById('histmodal').style.display='none'; }
-function fmtSaved(ts){ if(!ts) return ''; const d=new Date(ts); if(isNaN(d)) return '';
-  return `บันทึก ${d.getDate()}/${d.getMonth()+1} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-async function renderHistory(){
-  const box=document.getElementById('histlist'); box.innerHTML='<div class="um">กำลังโหลด...</div>';
-  try{
-    const r=await api({action:'weeks',username:currentUser,token:currentToken});
-    if(!handle(r)){ box.innerHTML=''; return; }
-    if(!r.ok || !r.weeks.length){ box.innerHTML='<div class="um">ยังไม่มีรายงานที่บันทึกไว้</div>'; return; }
-    box.innerHTML=r.weeks.map(w=>`
-      <div class="urow">
-        <span class="un">${esc(w.rangeLabel||w.weekKey||'(ไม่มีชื่อ)')}</span>
-        <span class="um">${esc(fmtSaved(w.updatedAt))}</span>
-        <button class="btn btn-blue btn-sm" onclick="openHist(${w.row},'${esc(w.weekKey)}')">เปิด</button>
-        <button class="udel" onclick="delHist(${w.row})">ลบ</button>
-      </div>`).join('');
-  }catch(e){ box.innerHTML='<div class="um">โหลดไม่สำเร็จ</div>'; }
-}
-async function openHist(row, k){
-  if(!(await leaveOk()))return;
-  closeHistory();
-  const d=new Date(k+'T00:00:00'); weekBase=isNaN(d)?new Date():d;
-  setWeek();
-  try{
-    const r=await api({action:'loadRow',username:currentUser,token:currentToken,row:row});
-    if(!handle(r)) return;
-    if(r.ok && r.data) applyState(r.data); else render();
-  }catch(e){ toast('เปิดไม่สำเร็จ'); }
-  dirty=false; setWeek();
-}
-async function delHist(row){
-  if(!(await confirmBox('ลบรายงานสัปดาห์นี้ออกจากประวัติ?','ลบ'))) return;
-  try{
-    const r=await api({action:'deleteWeek',username:currentUser,token:currentToken,row:row});
-    if(!handle(r)) return;
-    if(r.ok){ toast('ลบแล้ว'); renderHistory(); } else toast(r.error||'ลบไม่สำเร็จ');
-  }catch(e){ toast('ลบไม่สำเร็จ'); }
-}
-
-// ---------- admin: จัดการผู้ใช้ ----------
-function openUsers(){ document.getElementById('uerr').textContent=''; document.getElementById('adminpage').style.display='flex'; loadUserList(); }
-function closeUsers(){ document.getElementById('adminpage').style.display='none'; }
-async function loadUserList(){
-  try{
-    const r=await api({action:'listUsers',username:currentUser,token:currentToken});
-    if(!handle(r)) return;
-    const box=document.getElementById('ulist');
-    if(!r.ok){ box.innerHTML=''; document.getElementById('uerr').textContent=r.error||''; return; }
-    box.innerHTML=r.users.map(u=>`
-      <div class="urow">
-        <span class="un">${esc(u.username)}</span>
-        <span class="ur ${u.role==='admin'?'':'user'}">${u.role==='admin'?'แอดมิน':'ผู้ใช้'}</span>
-        <span class="um">${esc(u.displayName||'')}</span>
-        <button class="btn btn-light btn-sm" onclick="openResetPw('${esc(u.username)}')">รีเซ็ตรหัส</button>
-        ${u.role==='admin'?'':`<button class="udel" onclick="delUser('${esc(u.username)}')">ลบ</button>`}
-      </div>`).join('');
-  }catch(e){}
-}
-async function addUser(){
-  const err=document.getElementById('uerr'); err.textContent='';
-  const nu={ username:document.getElementById('nu_user').value.trim(),
-    password:document.getElementById('nu_pass').value,
-    displayName:document.getElementById('nu_name').value.trim(),
-    role:document.getElementById('nu_role').value };
-  if(!nu.username||!nu.password){ err.textContent='กรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
-  try{
-    const r=await api({action:'addUser',username:currentUser,token:currentToken,newUser:nu});
-    if(!handle(r)) return;
-    if(r.ok){ document.getElementById('nu_user').value=''; document.getElementById('nu_pass').value='';
-      document.getElementById('nu_name').value=''; toast('เพิ่มผู้ใช้แล้ว ✓'); loadUserList(); }
-    else err.textContent=r.error||'เพิ่มไม่สำเร็จ';
-  }catch(e){ err.textContent='เชื่อมต่อไม่ได้'; }
-}
-async function delUser(name){
-  if(!(await confirmBox('ลบผู้ใช้ "'+name+'" ?','ลบ'))) return;
-  try{
-    const r=await api({action:'deleteUser',username:currentUser,token:currentToken,target:name});
-    if(!handle(r)) return;
-    if(r.ok){ toast('ลบแล้ว'); loadUserList(); } else toast(r.error||'ลบไม่สำเร็จ');
-  }catch(e){}
-}
-
-// ---------- เปลี่ยน/รีเซ็ตรหัสผ่าน ----------
-let pwMode='self', pwTarget=null;
-function _pwReset(){ document.getElementById('pw_old').value=''; document.getElementById('pw_new').value='';
-  document.getElementById('pw_confirm').value=''; document.getElementById('pwerr').textContent=''; }
-function openChangePw(){ pwMode='self'; pwTarget=null; _pwReset();
-  document.getElementById('pwtitletext').textContent='เปลี่ยนรหัสผ่านของฉัน';
-  document.getElementById('pw_old').style.display='';
-  document.getElementById('pwmodal').style.display='flex'; }
-function openResetPw(name){ pwMode='admin'; pwTarget=name; _pwReset();
-  document.getElementById('pwtitletext').textContent='รีเซ็ตรหัสผ่าน: '+name;
-  document.getElementById('pw_old').style.display='none';   // admin ไม่ต้องใส่รหัสเดิม
-  document.getElementById('pwmodal').style.display='flex'; }
-function closePw(){ document.getElementById('pwmodal').style.display='none'; }
-async function submitPw(){
-  const err=document.getElementById('pwerr'); err.textContent='';
-  const nw=document.getElementById('pw_new').value, cf=document.getElementById('pw_confirm').value;
-  if(nw.length<4){ err.textContent='รหัสผ่านใหม่อย่างน้อย 4 ตัว'; return; }
-  if(nw!==cf){ err.textContent='ยืนยันรหัสผ่านไม่ตรงกัน'; return; }
-  try{
-    let r;
-    if(pwMode==='self'){
-      const old=document.getElementById('pw_old').value;
-      if(!old){ err.textContent='กรอกรหัสผ่านปัจจุบัน'; return; }
-      r=await api({action:'changePw',username:currentUser,token:currentToken,oldPassword:old,newPassword:nw});
-    }else{
-      r=await api({action:'resetPw',username:currentUser,token:currentToken,target:pwTarget,newPassword:nw});
-    }
-    if(!handle(r)) return;
-    if(r.ok){ toast('เปลี่ยนรหัสผ่านแล้ว ✓'); closePw(); }
-    else err.textContent=r.error||'ไม่สำเร็จ';
-  }catch(e){ err.textContent='เชื่อมต่อไม่ได้'; }
-}
-
-// ---------- เริ่มทำงาน ----------
-async function init(){
-  render(); setWeek();                 // แสดงโปสเตอร์เสมอ (กันหน้าเปล่า)
-  if(OFFLINE){
-    document.querySelectorAll('.online-only').forEach(el=>el.style.display='none');
-    return;
-  }
-  // ทำให้ไลบรารี Supabase พร้อมก่อน (กัน CDN ช้า/พลาด แล้วหน้าเปล่า)
-  if(!ensureClient()){
-    await loadSupabaseLib();
-    if(!ensureClient()){ showLogin('โหลดระบบไม่สำเร็จ กรุณารีเฟรชหน้า (กด F5)'); return; }
-  }
-  document.getElementById('lp').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
-  document.getElementById('lu').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('lp').focus(); });
-  const s=loadSession();
-  if(s && s.user && s.token){
-    currentUser=s.user; currentToken=s.token; currentRole=s.role||'user'; currentName=s.name||s.user;
-    try{
-      const r=await api({action:'ping',username:currentUser,token:currentToken});
-      if(r.ok){ currentRole=r.role||currentRole; currentName=r.displayName||currentName; enterApp(); return; }
-    }catch(e){}
-    clearSession();
-  }
-  showLogin('');
-}
-
-// ---------- ปุ่ม PNG แบบ 3 ตัวเลือก ----------
-function toggleDD(e){ e.stopPropagation(); document.getElementById('ddmenu').classList.toggle('show'); }
-function closeDD(){ const m=document.getElementById('ddmenu'); if(m) m.classList.remove('show'); }
-document.addEventListener('click',closeDD);
-
-async function pngAction(mode){   // 'both' | 'save' | 'png'
-  closeDD();
-  if(mode==='save'){
-    if(OFFLINE || !currentUser){ toast('โหมดออฟไลน์ บันทึกไม่ได้'); return; }
-    const res=await autoSave();
-    toast(res.ok ? 'บันทึกเป็นรายการใหม่ ✓' : ('บันทึกไม่สำเร็จ: '+(res.error||'')));
-    return;
-  }
-  let saveRes=null;
-  if(mode==='both' && !OFFLINE && currentUser){ saveRes=await autoSave(); }
-  document.activeElement && document.activeElement.blur();
-  await (document.fonts ? document.fonts.ready : Promise.resolve());
-  document.body.classList.add('exporting');
-  try{
-    const canvas=await html2canvas(poster,{scale:2,useCORS:true,backgroundColor:'#fbf7f0',logging:false});
-    const link=document.createElement('a'); link.download='รายงานรายสัปดาห์.png'; link.href=canvas.toDataURL('image/png'); link.click();
-    if(mode==='both' && saveRes){ toast(saveRes.ok ? 'ดาวน์โหลด + บันทึกเป็นรายการใหม่ ✓' : ('ดาวน์โหลดแล้ว (บันทึกไม่สำเร็จ: '+(saveRes.error||'')+')')); }
-    else toast('ดาวน์โหลดแล้ว ✓');
-  }catch(err){ alert('เกิดข้อผิดพลาดในการสร้างรูป: '+err.message); }
-  finally{ document.body.classList.remove('exporting'); }
-}
-
-init();
-</script>
-</body>
-</html>
+-- เสร็จแล้ว! ผู้ใช้คนอื่นเพิ่มผ่านหน้าเว็บ (ปุ่มจัดการผู้ใช้ ตอนล็อกอินเป็น admin)
