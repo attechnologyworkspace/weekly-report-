@@ -421,12 +421,12 @@ function cardHTML(p){
     </div>
     <div class="body">
       <div class="col done">
-        <h4><span class="ic"></span>สัปดาห์นี้</h4>
+        <h4><span class="ic"></span><span class="hlabel" contenteditable="true">${esc(p.doneLabel||'สัปดาห์นี้')}</span></h4>
         <ul>${(p.done||[]).map(liHTML).join('')}</ul>
         <button class="addline" onclick="addLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายการ</button>
       </div>
       <div class="col next">
-        <h4><span class="ic"></span>ถัดไป</h4>
+        <h4><span class="ic"></span><span class="hlabel" contenteditable="true">${esc(p.nextLabel||'ถัดไป')}</span></h4>
         <ul>${(p.next||[]).map(liHTML).join('')}</ul>
         <button class="addline" onclick="addLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายการ</button>
       </div>
@@ -532,6 +532,8 @@ function collectProjects(){
     title:card.querySelector('.title').textContent, code:card.querySelector('.code').textContent,
     status:card.querySelector('.status').textContent, pct:cleanPct(card.querySelector('.pct')),
     color:card.dataset.color||'',
+    doneLabel:card.querySelector('.col.done h4 .hlabel').textContent,
+    nextLabel:card.querySelector('.col.next h4 .hlabel').textContent,
     done:[...card.querySelectorAll('.col.done li .txt')].map(s=>s.textContent),
     next:[...card.querySelectorAll('.col.next li .txt')].map(s=>s.textContent)
   }));
