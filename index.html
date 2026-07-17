@@ -100,10 +100,17 @@
   .bar{height:9px;border-radius:9px;background:rgba(255,255,255,.28);margin-top:13px;overflow:hidden}
   .bar>i{display:block;height:100%;border-radius:9px;background:#fff;transition:width .2s ease}
 
-  .body{padding:18px 22px 20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1}
+  .body{padding:18px 22px 4px;display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:20px;flex:1}
+  .col{position:relative;padding-right:16px}
   .col h4{font-family:'Prompt',sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em;display:flex;align-items:center;gap:7px;margin-bottom:10px}
   .col h4 .ic{width:9px;height:9px;border-radius:3px;background:var(--a)}
-  .col.next h4 .ic{background:var(--muted);opacity:.5}
+  .delcol{position:absolute;top:-2px;right:0;width:18px;height:18px;padding:0;border:none;background:none;color:#c4cbd6;
+    cursor:pointer;opacity:0;transition:opacity .12s,color .12s;display:flex;align-items:center;justify-content:center;border-radius:4px}
+  .col:hover .delcol{opacity:1}
+  .delcol:hover{color:#ff5a5f;background:rgba(255,90,95,.1)}
+  .addcol{margin:2px 22px 18px;font-family:'Prompt',sans-serif;font-weight:600;font-size:12px;color:var(--muted);
+    cursor:pointer;background:none;border:1px dashed #cfd6e2;border-radius:8px;padding:6px 12px;display:inline-flex;align-items:center;gap:5px}
+  .addcol:hover{color:var(--ink);border-color:#9aa4b6}
   ul{list-style:none;display:flex;flex-direction:column;gap:7px}
   li{font-size:var(--body-size);line-height:1.42;color:var(--body-text);padding-left:16px;padding-right:22px;position:relative}
   li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--a)}
@@ -128,8 +135,9 @@
   .cardcolor::-moz-color-swatch{border:none;border-radius:50%}
   .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1.5px solid var(--line);padding-top:18px}
 
-  .exporting .addline,.exporting .removecard,.exporting .delline,.exporting .cardcolor{display:none !important}
+  .exporting .addline,.exporting .removecard,.exporting .delline,.exporting .cardcolor,.exporting .delcol,.exporting .addcol{display:none !important}
   .exporting .card .top .row{padding-right:0 !important}
+  .exporting .col{padding-right:0 !important}
   .exporting [contenteditable]{box-shadow:none !important;background:none !important}
 
   /* login */
@@ -405,7 +413,19 @@ function lighten(hex,f){
 function applyCardColor(card,c){ card.style.setProperty('--a',c); card.style.setProperty('--a2',lighten(c,0.28)); }
 function setCardColor(inp){ const card=inp.closest('.card'); card.dataset.color=inp.value; applyCardColor(card,inp.value); refreshStrip(); markDirty(); }
 
+function colHTML(col){
+  return `<div class="col">
+    <button class="delcol" title="ลบหัวข้อ" onclick="delColumn(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h4><span class="ic"></span><span class="hlabel" contenteditable="true">${esc(col.label||'หัวข้อ')}</span></h4>
+    <ul>${(col.items||[]).map(liHTML).join('')}</ul>
+    <button class="addline" onclick="addLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายการ</button>
+  </div>`;
+}
 function cardHTML(p){
+  // รองรับทั้งข้อมูลใหม่ (columns) และข้อมูลเก่า (done/next)
+  const cols = (p.columns && p.columns.length) ? p.columns
+    : [{label:p.doneLabel||'สัปดาห์นี้', items:p.done||[]},
+       {label:p.nextLabel||'ถัดไป',    items:p.next||[]}];
   return `
   <div class="card"${p.color?` data-color="${esc(p.color)}"`:''}>
     <button class="removecard" title="ลบโครงการ" onclick="this.closest('.card').remove();refresh();markDirty()"><svg class="ic-svg" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
@@ -419,19 +439,19 @@ function cardHTML(p){
         <span class="pctwrap"><span class="pct" contenteditable="true" oninput="onPct(this)">${p.pct}</span>%</span></div>
       <div class="bar"><i style="width:${p.pct}%"></i></div>
     </div>
-    <div class="body">
-      <div class="col done">
-        <h4><span class="ic"></span><span class="hlabel" contenteditable="true">${esc(p.doneLabel||'สัปดาห์นี้')}</span></h4>
-        <ul>${(p.done||[]).map(liHTML).join('')}</ul>
-        <button class="addline" onclick="addLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายการ</button>
-      </div>
-      <div class="col next">
-        <h4><span class="ic"></span><span class="hlabel" contenteditable="true">${esc(p.nextLabel||'ถัดไป')}</span></h4>
-        <ul>${(p.next||[]).map(liHTML).join('')}</ul>
-        <button class="addline" onclick="addLine(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายการ</button>
-      </div>
-    </div>
+    <div class="body">${cols.map(colHTML).join('')}</div>
+    <button class="addcol" onclick="addColumn(this)"><svg class="ic-svg" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg> เพิ่มหัวข้อ</button>
   </div>`;
+}
+function addColumn(btn){
+  const body=btn.closest('.card').querySelector('.body');
+  body.insertAdjacentHTML('beforeend', colHTML({label:'หัวข้อใหม่', items:['รายการใหม่']}));
+  refresh(); markDirty();
+}
+function delColumn(btn){
+  const col=btn.closest('.col'), body=col.closest('.body');
+  if(body.querySelectorAll('.col').length<=1){ toast('ต้องมีอย่างน้อย 1 หัวข้อ'); return; }
+  col.remove(); markDirty();
 }
 function render(){ grid.innerHTML = SEED.map(cardHTML).join(''); refresh(); }
 
@@ -532,10 +552,10 @@ function collectProjects(){
     title:card.querySelector('.title').textContent, code:card.querySelector('.code').textContent,
     status:card.querySelector('.status').textContent, pct:cleanPct(card.querySelector('.pct')),
     color:card.dataset.color||'',
-    doneLabel:card.querySelector('.col.done h4 .hlabel').textContent,
-    nextLabel:card.querySelector('.col.next h4 .hlabel').textContent,
-    done:[...card.querySelectorAll('.col.done li .txt')].map(s=>s.textContent),
-    next:[...card.querySelectorAll('.col.next li .txt')].map(s=>s.textContent)
+    columns:[...card.querySelectorAll('.col')].map(col=>({
+      label: col.querySelector('.hlabel').textContent,
+      items: [...col.querySelectorAll('li .txt')].map(s=>s.textContent)
+    }))
   }));
 }
 function collectState(){ const t=id=>document.getElementById(id).textContent;
