@@ -565,6 +565,7 @@ async function thisWeek(){ if(!(await leaveOk()))return; weekBase=new Date(); af
 function useAsThisWeek(){
   weekBase=new Date();
   viewingOther=null;
+  currentReportName='';   // ล้างชื่อเดิม เพื่อให้กล่องตั้งชื่อใช้ช่วงวันที่ของสัปดาห์ปัจจุบัน
   setWeekDate();      // อัปเดตวันที่บนรายงานเป็นสัปดาห์ปัจจุบัน
   setWeekChrome();    // ปฏิทิน+แบนเนอร์ (แบนเนอร์จะซ่อนเพราะเป็นสัปดาห์ปัจจุบันแล้ว)
   markDirty();
